@@ -1,0 +1,155 @@
+{
+  "name": "02-shared-document",
+  "description": "One document in two subscriptions is sent once; changed applies to both; removed from one keeps it in the other.",
+  "subscriptions": [
+    {
+      "c": "todos",
+      "filter": {}
+    },
+    {
+      "c": "todos",
+      "filter": {
+        "mine": true
+      }
+    }
+  ],
+  "steps": [
+    {
+      "server": [
+        {
+          "t": "welcome",
+          "seq": 0,
+          "sid": "n1.a",
+          "v": 1,
+          "resumed": false,
+          "hb": 25000,
+          "pv": "sha256:x",
+          "ct": "10",
+          "caps": ["batch", "diff"],
+          "limits": {
+            "subs": 100
+          }
+        },
+        {
+          "t": "added",
+          "seq": 1,
+          "c": "todos",
+          "id": 1,
+          "d": {
+            "_id": 1,
+            "mine": true,
+            "n": 1
+          },
+          "ct": "10",
+          "s": ["s1"]
+        },
+        {
+          "t": "ready",
+          "seq": 2,
+          "s": "s1",
+          "ct": "10"
+        },
+        {
+          "t": "added",
+          "seq": 3,
+          "c": "todos",
+          "id": 1,
+          "ct": "10",
+          "s": ["s2"]
+        },
+        {
+          "t": "ready",
+          "seq": 4,
+          "s": "s2",
+          "ct": "10"
+        }
+      ],
+      "expect": {
+        "s1": {
+          "status": "ready",
+          "data": [
+            {
+              "_id": 1,
+              "mine": true,
+              "n": 1
+            }
+          ]
+        },
+        "s2": {
+          "status": "ready",
+          "data": [
+            {
+              "_id": 1,
+              "mine": true,
+              "n": 1
+            }
+          ]
+        }
+      }
+    },
+    {
+      "server": [
+        {
+          "t": "changed",
+          "seq": 5,
+          "c": "todos",
+          "id": 1,
+          "ct": "11",
+          "set": {
+            "n": 2
+          }
+        }
+      ],
+      "expect": {
+        "s1": {
+          "status": "ready",
+          "data": [
+            {
+              "_id": 1,
+              "mine": true,
+              "n": 2
+            }
+          ]
+        },
+        "s2": {
+          "status": "ready",
+          "data": [
+            {
+              "_id": 1,
+              "mine": true,
+              "n": 2
+            }
+          ]
+        }
+      }
+    },
+    {
+      "server": [
+        {
+          "t": "removed",
+          "seq": 6,
+          "c": "todos",
+          "id": 1,
+          "ct": "12",
+          "s": ["s2"]
+        }
+      ],
+      "expect": {
+        "s1": {
+          "status": "ready",
+          "data": [
+            {
+              "_id": 1,
+              "mine": true,
+              "n": 2
+            }
+          ]
+        },
+        "s2": {
+          "status": "ready",
+          "data": []
+        }
+      }
+    }
+  ]
+}

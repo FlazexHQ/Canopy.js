@@ -1,0 +1,102 @@
+{
+  "name": "07-typed-values",
+  "description": "EJSON values decode to their types and sorting follows BSON order (numbers before strings).",
+  "subscriptions": [
+    {
+      "c": "items",
+      "filter": {},
+      "sort": {
+        "v": -1
+      }
+    }
+  ],
+  "steps": [
+    {
+      "server": [
+        {
+          "t": "welcome",
+          "seq": 0,
+          "sid": "n1.a",
+          "v": 1,
+          "resumed": false,
+          "hb": 25000,
+          "pv": "sha256:x",
+          "ct": "10",
+          "caps": ["batch", "diff"],
+          "limits": {
+            "subs": 100
+          }
+        },
+        {
+          "t": "added",
+          "seq": 1,
+          "c": "items",
+          "id": 1,
+          "d": {
+            "_id": 1,
+            "v": "text"
+          },
+          "ct": "10",
+          "s": ["s1"]
+        },
+        {
+          "t": "added",
+          "seq": 2,
+          "c": "items",
+          "id": 2,
+          "d": {
+            "_id": 2,
+            "v": {
+              "$numberLong": "9007199254740993"
+            }
+          },
+          "ct": "10",
+          "s": ["s1"]
+        },
+        {
+          "t": "added",
+          "seq": 3,
+          "c": "items",
+          "id": 3,
+          "d": {
+            "_id": 3,
+            "v": {
+              "$date": "2026-11-05T09:30:00.000Z"
+            }
+          },
+          "ct": "10",
+          "s": ["s1"]
+        },
+        {
+          "t": "ready",
+          "seq": 4,
+          "s": "s1",
+          "ct": "10"
+        }
+      ],
+      "expect": {
+        "s1": {
+          "status": "ready",
+          "data": [
+            {
+              "_id": 3,
+              "v": {
+                "$date": "2026-11-05T09:30:00.000Z"
+              }
+            },
+            {
+              "_id": 1,
+              "v": "text"
+            },
+            {
+              "_id": 2,
+              "v": {
+                "$numberLong": "9007199254740993"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ]
+}

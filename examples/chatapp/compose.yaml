@@ -1,0 +1,113 @@
+# The Canopy stack for Canopy Chat: the same separate services as Canopy's deploy/compose/canopy.yaml (database,
+# api, realtime, studio and edge), with this app's config, policies and file storage. The images build from
+# a Canopy checkout next to Canopy.js (../../../Canopy) until they are published.
+name: canopy-chat
+
+x-canopy: &canopy
+  build:
+    context: ../../../Canopy
+    dockerfile: deploy/docker/canopy.Dockerfile
+    additional_contexts:
+      canopyjs: ../..
+  image: canopy:dev
+  restart: unless-stopped
+  depends_on:
+    database:
+      condition: service_healthy
+  healthcheck:
+    test:
+      ["CMD", "bun", "-e", "process.exit((await fetch('http://localhost:8080/readyz')).ok ? 0 : 1)"]
+    interval: 5s
+    timeout: 5s
+    retries: 24
+
+x-canopy-environment: &canopy-environment
+  CANOPY_MASTER_KEY: ${CANOPY_MASTER_KEY:?Generate a local .env file as described in README.md}
+  CANOPY_TRUSTED_PROXIES: 172.30.0.10
+
+services:
+  database:
+    image: mongo:8.0.34@sha256:b9924c330a8bbc5800fe9c69f04a84e221eca7b28fd049a0354147d9908fa142
+    command: ["--replSet", "rs0", "--bind_ip_all"]
+    restart: unless-stopped
+    volumes:
+      - chat-data:/data/db
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "mongosh",
+          "--quiet",
+          "--eval",
+          "try { rs.status() } catch { rs.initiate({ _id: 'rs0', members: [{ _id: 0, host: 'database:27017' }] }) }; quit(db.hello().isWritablePrimary ? 0 : 1)",
+        ]
+      interval: 3s
+      timeout: 8s
+      retries: 30
+
+  api:
+    <<: *canopy
+    environment:
+      <<: *canopy-environment
+      CANOPY_ROLE: api
+      CANOPY_NODE_ID: api-1
+      CANOPY_REALTIME_URL: http://realtime:8080
+    volumes:
+      - ./canopy.config.ts:/app/canopy.config.ts:ro
+      - ./policies:/app/policies:ro
+      - chat-files:/app/storage
+    ports:
+      - "127.0.0.1:9464:9464"
+
+  realtime:
+    <<: *canopy
+    environment:
+      <<: *canopy-environment
+      CANOPY_ROLE: realtime
+      CANOPY_NODE_ID: realtime-1
+    volumes:
+      - ./canopy.config.ts:/app/canopy.config.ts:ro
+      - ./policies:/app/policies:ro
+    ports:
+      - "127.0.0.1:9465:9464"
+
+  studio:
+    build:
+      context: ../../../Canopy
+      dockerfile: deploy/docker/canopy-studio.Dockerfile
+      additional_contexts:
+        canopyjs: ../..
+    image: canopy-studio:dev
+    restart: unless-stopped
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "bun",
+          "-e",
+          "process.exit((await fetch('http://localhost:8080/healthz')).ok ? 0 : 1)",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+
+  edge:
+    image: caddy:2.11.9@sha256:4851e54a46b206517c574821bb5cc67f170d2156041e9fbc4c9193b45e84a75b
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8080:8080"
+    volumes:
+      - ../../../Canopy/deploy/compose/edge/Caddyfile:/etc/caddy/Caddyfile:ro
+    networks:
+      default:
+        ipv4_address: 172.30.0.10
+
+networks:
+  default:
+    ipam:
+      config:
+        - subnet: 172.30.0.0/24
+
+volumes:
+  chat-data: {}
+  chat-files: {}

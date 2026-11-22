@@ -1,0 +1,106 @@
+{
+  "name": "05-batch-and-replace",
+  "description": "Messages inside a batch carry their own seq; changed with replace swaps the whole document.",
+  "subscriptions": [
+    {
+      "c": "todos",
+      "filter": {}
+    }
+  ],
+  "steps": [
+    {
+      "server": [
+        {
+          "t": "welcome",
+          "seq": 0,
+          "sid": "n1.a",
+          "v": 1,
+          "resumed": false,
+          "hb": 25000,
+          "pv": "sha256:x",
+          "ct": "10",
+          "caps": ["batch", "diff"],
+          "limits": {
+            "subs": 100
+          }
+        },
+        {
+          "t": "batch",
+          "m": [
+            {
+              "t": "added",
+              "seq": 1,
+              "c": "todos",
+              "id": 1,
+              "d": {
+                "_id": 1,
+                "a": 1,
+                "b": 2
+              },
+              "ct": "10",
+              "s": ["s1"]
+            },
+            {
+              "t": "ready",
+              "seq": 2,
+              "s": "s1",
+              "ct": "10"
+            },
+            {
+              "t": "later",
+              "seq": 3
+            }
+          ]
+        }
+      ],
+      "expect": {
+        "s1": {
+          "status": "ready",
+          "data": [
+            {
+              "_id": 1,
+              "a": 1,
+              "b": 2
+            }
+          ]
+        }
+      }
+    },
+    {
+      "server": [
+        {
+          "t": "changed",
+          "seq": 4,
+          "c": "todos",
+          "id": 1,
+          "ct": "11",
+          "d": {
+            "_id": 1,
+            "c": 3
+          },
+          "replace": true
+        },
+        {
+          "t": "future",
+          "seq": 5,
+          "x": true
+        },
+        {
+          "t": "pong",
+          "ts": 1
+        }
+      ],
+      "expect": {
+        "s1": {
+          "status": "ready",
+          "data": [
+            {
+              "_id": 1,
+              "c": 3
+            }
+          ]
+        }
+      }
+    }
+  ]
+}

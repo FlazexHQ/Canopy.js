@@ -1,0 +1,104 @@
+{
+  "name": "03-ordering-and-duplicates",
+  "description": "State only moves forward: an older ct is ignored, and a frame with an already applied seq (a resume replay) is dropped.",
+  "subscriptions": [
+    {
+      "c": "todos",
+      "filter": {}
+    }
+  ],
+  "steps": [
+    {
+      "server": [
+        {
+          "t": "welcome",
+          "seq": 0,
+          "sid": "n1.a",
+          "v": 1,
+          "resumed": false,
+          "hb": 25000,
+          "pv": "sha256:x",
+          "ct": "10",
+          "caps": ["batch", "diff"],
+          "limits": {
+            "subs": 100
+          }
+        },
+        {
+          "t": "added",
+          "seq": 1,
+          "c": "todos",
+          "id": 1,
+          "d": {
+            "_id": 1,
+            "v": "new"
+          },
+          "ct": "20",
+          "s": ["s1"]
+        },
+        {
+          "t": "ready",
+          "seq": 2,
+          "s": "s1",
+          "ct": "20"
+        },
+        {
+          "t": "changed",
+          "seq": 3,
+          "c": "todos",
+          "id": 1,
+          "ct": "19",
+          "set": {
+            "v": "old"
+          }
+        }
+      ],
+      "expect": {
+        "s1": {
+          "status": "ready",
+          "data": [
+            {
+              "_id": 1,
+              "v": "new"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "server": [
+        {
+          "t": "changed",
+          "seq": 4,
+          "c": "todos",
+          "id": 1,
+          "ct": "20",
+          "set": {
+            "v": "tie"
+          }
+        },
+        {
+          "t": "changed",
+          "seq": 4,
+          "c": "todos",
+          "id": 1,
+          "ct": "21",
+          "set": {
+            "v": "duplicate seq"
+          }
+        }
+      ],
+      "expect": {
+        "s1": {
+          "status": "ready",
+          "data": [
+            {
+              "_id": 1,
+              "v": "tie"
+            }
+          ]
+        }
+      }
+    }
+  ]
+}

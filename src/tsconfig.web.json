@@ -1,0 +1,12 @@
+{
+  "$schema": "https://json.schemastore.org/tsconfig",
+  "extends": "../tsconfig.web.json",
+  "compilerOptions": {
+    "rootDir": ".",
+    "outDir": "../dist",
+    "tsBuildInfoFile": "../dist/.web.tsbuildinfo",
+    "types": []
+  },
+  "include": ["react", "vue", "svelte", "solid", "tanstack-db", "devtools"],
+  "references": [{ "path": "./tsconfig.json" }]
+}

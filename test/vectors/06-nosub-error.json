@@ -1,0 +1,62 @@
+{
+  "name": "06-nosub-error",
+  "description": "nosub with an error ends the query with a typed error; other queries are unaffected.",
+  "subscriptions": [
+    {
+      "c": "todos",
+      "filter": {
+        "secret": 1
+      }
+    },
+    {
+      "c": "todos",
+      "filter": {}
+    }
+  ],
+  "steps": [
+    {
+      "server": [
+        {
+          "t": "welcome",
+          "seq": 0,
+          "sid": "n1.a",
+          "v": 1,
+          "resumed": false,
+          "hb": 25000,
+          "pv": "sha256:x",
+          "ct": "10",
+          "caps": ["batch", "diff"],
+          "limits": {
+            "subs": 100
+          }
+        },
+        {
+          "t": "nosub",
+          "seq": 1,
+          "s": "s1",
+          "err": {
+            "code": "CANOPY_INVALID_QUERY",
+            "msg": "secret is not readable"
+          }
+        },
+        {
+          "t": "ready",
+          "seq": 2,
+          "s": "s2",
+          "ct": "10"
+        }
+      ],
+      "expect": {
+        "s1": {
+          "status": "error",
+          "error": "CANOPY_INVALID_QUERY",
+          "data": []
+        },
+        "s2": {
+          "status": "ready",
+          "data": []
+        }
+      }
+    }
+  ]
+}

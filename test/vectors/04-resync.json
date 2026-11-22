@@ -1,0 +1,146 @@
+{
+  "name": "04-resync",
+  "description": "On resync the client re-subscribes with the same id, keeps its cache, and at ready drops the members the server did not confirm.",
+  "subscriptions": [
+    {
+      "c": "todos",
+      "filter": {}
+    }
+  ],
+  "steps": [
+    {
+      "server": [
+        {
+          "t": "welcome",
+          "seq": 0,
+          "sid": "n1.a",
+          "v": 1,
+          "resumed": false,
+          "hb": 25000,
+          "pv": "sha256:x",
+          "ct": "10",
+          "caps": ["batch", "diff"],
+          "limits": {
+            "subs": 100
+          }
+        },
+        {
+          "t": "added",
+          "seq": 1,
+          "c": "todos",
+          "id": "a",
+          "d": {
+            "_id": "a"
+          },
+          "ct": "10",
+          "s": ["s1"]
+        },
+        {
+          "t": "added",
+          "seq": 2,
+          "c": "todos",
+          "id": "b",
+          "d": {
+            "_id": "b"
+          },
+          "ct": "10",
+          "s": ["s1"]
+        },
+        {
+          "t": "ready",
+          "seq": 3,
+          "s": "s1",
+          "ct": "10"
+        }
+      ],
+      "expect": {
+        "s1": {
+          "status": "ready",
+          "data": [
+            {
+              "_id": "a"
+            },
+            {
+              "_id": "b"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "server": [
+        {
+          "t": "resync",
+          "seq": 4,
+          "reason": "policy",
+          "s": ["s1"]
+        }
+      ],
+      "expect": {
+        "s1": {
+          "status": "stale",
+          "data": [
+            {
+              "_id": "a"
+            },
+            {
+              "_id": "b"
+            }
+          ]
+        }
+      },
+      "sent": ["hello", "sub", "sub"]
+    },
+    {
+      "server": [
+        {
+          "t": "added",
+          "seq": 5,
+          "c": "todos",
+          "id": "b",
+          "d": {
+            "_id": "b",
+            "x": 1
+          },
+          "ct": "15",
+          "s": ["s1"]
+        }
+      ],
+      "expect": {
+        "s1": {
+          "status": "stale",
+          "data": [
+            {
+              "_id": "a"
+            },
+            {
+              "_id": "b",
+              "x": 1
+            }
+          ]
+        }
+      }
+    },
+    {
+      "server": [
+        {
+          "t": "ready",
+          "seq": 6,
+          "s": "s1",
+          "ct": "15"
+        }
+      ],
+      "expect": {
+        "s1": {
+          "status": "ready",
+          "data": [
+            {
+              "_id": "b",
+              "x": 1
+            }
+          ]
+        }
+      }
+    }
+  ]
+}

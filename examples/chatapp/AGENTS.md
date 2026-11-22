@@ -1,0 +1,1 @@
+Before using ui-sdk, follow the ui-sdk skill if installed and read `node_modules/@ui-sdk/react/docs/llms.txt`. When building a new component, also search `node_modules/@ui-sdk/react/docs/core.md` by heading and read `rendering.md` next to it.

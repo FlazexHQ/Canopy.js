@@ -1,0 +1,186 @@
+{
+  "name": "01-snapshot-then-stream",
+  "description": "A snapshot arrives as added messages followed by ready; later added, changed and removed keep the view current.",
+  "subscriptions": [
+    {
+      "c": "todos",
+      "filter": {
+        "done": false
+      },
+      "sort": {
+        "rank": 1
+      }
+    }
+  ],
+  "steps": [
+    {
+      "server": [
+        {
+          "t": "welcome",
+          "seq": 0,
+          "sid": "n1.a",
+          "v": 1,
+          "resumed": false,
+          "hb": 25000,
+          "pv": "sha256:x",
+          "ct": "10",
+          "caps": ["batch", "diff"],
+          "limits": {
+            "subs": 100
+          }
+        },
+        {
+          "t": "added",
+          "seq": 1,
+          "c": "todos",
+          "id": {
+            "$oid": "6728f0c2a1b2c3d4e5f60712"
+          },
+          "d": {
+            "_id": {
+              "$oid": "6728f0c2a1b2c3d4e5f60712"
+            },
+            "rank": 2,
+            "title": "b"
+          },
+          "ct": "10",
+          "s": ["s1"]
+        },
+        {
+          "t": "added",
+          "seq": 2,
+          "c": "todos",
+          "id": {
+            "$oid": "6728f0c2a1b2c3d4e5f60711"
+          },
+          "d": {
+            "_id": {
+              "$oid": "6728f0c2a1b2c3d4e5f60711"
+            },
+            "rank": 1,
+            "title": "a"
+          },
+          "ct": "10",
+          "s": ["s1"]
+        }
+      ],
+      "expect": {
+        "s1": {
+          "status": "loading",
+          "data": [
+            {
+              "_id": {
+                "$oid": "6728f0c2a1b2c3d4e5f60711"
+              },
+              "rank": 1,
+              "title": "a"
+            },
+            {
+              "_id": {
+                "$oid": "6728f0c2a1b2c3d4e5f60712"
+              },
+              "rank": 2,
+              "title": "b"
+            }
+          ]
+        }
+      },
+      "sent": ["hello", "sub"]
+    },
+    {
+      "server": [
+        {
+          "t": "ready",
+          "seq": 3,
+          "s": "s1",
+          "ct": "10"
+        }
+      ],
+      "expect": {
+        "s1": {
+          "status": "ready",
+          "data": [
+            {
+              "_id": {
+                "$oid": "6728f0c2a1b2c3d4e5f60711"
+              },
+              "rank": 1,
+              "title": "a"
+            },
+            {
+              "_id": {
+                "$oid": "6728f0c2a1b2c3d4e5f60712"
+              },
+              "rank": 2,
+              "title": "b"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "server": [
+        {
+          "t": "changed",
+          "seq": 4,
+          "c": "todos",
+          "id": {
+            "$oid": "6728f0c2a1b2c3d4e5f60711"
+          },
+          "ct": "11",
+          "set": {
+            "rank": 3
+          },
+          "unset": ["title"]
+        }
+      ],
+      "expect": {
+        "s1": {
+          "status": "ready",
+          "data": [
+            {
+              "_id": {
+                "$oid": "6728f0c2a1b2c3d4e5f60712"
+              },
+              "rank": 2,
+              "title": "b"
+            },
+            {
+              "_id": {
+                "$oid": "6728f0c2a1b2c3d4e5f60711"
+              },
+              "rank": 3
+            }
+          ]
+        }
+      }
+    },
+    {
+      "server": [
+        {
+          "t": "removed",
+          "seq": 5,
+          "c": "todos",
+          "id": {
+            "$oid": "6728f0c2a1b2c3d4e5f60712"
+          },
+          "ct": "12",
+          "s": ["s1"]
+        }
+      ],
+      "expect": {
+        "s1": {
+          "status": "ready",
+          "data": [
+            {
+              "_id": {
+                "$oid": "6728f0c2a1b2c3d4e5f60711"
+              },
+              "rank": 3
+            }
+          ]
+        }
+      }
+    }
+  ]
+}

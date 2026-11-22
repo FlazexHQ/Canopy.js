@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json.schemastore.org/tsconfig",
+  "files": [],
+  "references": [
+    { "path": "src" },
+    { "path": "src/tsconfig.config.json" },
+    { "path": "src/tsconfig.web.json" },
+    { "path": "test/support" },
+    { "path": "test/client" },
+    { "path": "test/client/registered" },
+    { "path": "test/react" },
+    { "path": "test/vue" },
+    { "path": "test/vue/registered" },
+    { "path": "test/svelte" },
+    { "path": "test/svelte/registered" },
+    { "path": "test/solid" },
+    { "path": "test/solid/registered" },
+    { "path": "test/tanstack-db" },
+    { "path": "test/devtools" }
+  ]
+}

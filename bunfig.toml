@@ -1,0 +1,10 @@
+[install]
+exact = true
+minimumReleaseAge = 604800
+# ui-sdk is newer than the release age window; the chatapp example pins its exact beta.
+minimumReleaseAgeExcludes = ["@ui-sdk/core", "@ui-sdk/react"]
+
+[fmt]
+printWidth = 100
+semi = false
+ignorePatterns = ["src/core/**", "test/vectors/**", "dist/**", "CHANGELOG.md"]

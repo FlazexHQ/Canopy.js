@@ -1,0 +1,33 @@
+{
+  "compilerOptions": {
+    "esModuleInterop": true,
+    "plugins": [
+      {
+        "name": "next"
+      }
+    ],
+    "allowJs": true,
+    "tsBuildInfoFile": "node_modules/.cache/chatapp.tsbuildinfo",
+    "emitDeclarationOnly": true,
+    "outDir": "node_modules/.cache/types",
+    "rootDir": ".",
+    "allowImportingTsExtensions": true,
+    "types": ["node"],
+    "rewriteRelativeImportExtensions": false,
+    "declarationMap": false
+  },
+  "include": [
+    "app/**/*.tsx",
+    "app/**/*.ts",
+    "next.config.ts",
+    "canopy.config.ts",
+    "policies/**/*.ts",
+    "next-env.d.ts",
+    ".next/types/**/*.ts",
+    ".next/dev/types/**/*.ts",
+    "e2e",
+    "test"
+  ],
+  "exclude": ["node_modules"],
+  "extends": "../../tsconfig.web.json"
+}

@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json.schemastore.org/tsconfig",
+  "extends": "../../tsconfig.web.json",
+  "compilerOptions": {
+    "rootDir": ".",
+    "allowImportingTsExtensions": true,
+    "rewriteRelativeImportExtensions": false,
+    "emitDeclarationOnly": true,
+    "declarationMap": false,
+    "outDir": "../../node_modules/.cache/test-types/react",
+    "tsBuildInfoFile": "../../node_modules/.cache/test-types/react/.tsbuildinfo",
+    "types": []
+  },
+  "include": ["."],
+
+  "references": [{ "path": "../../src/tsconfig.web.json" }, { "path": "../support" }]
+}

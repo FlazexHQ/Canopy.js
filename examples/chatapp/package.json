@@ -1,0 +1,36 @@
+{
+  "name": "@canopy/example-chatapp",
+  "version": "0.0.0",
+  "private": true,
+  "description": "A shared realtime chat room with Canopy email and password authentication.",
+  "license": "UNLICENSED",
+  "type": "module",
+  "scripts": {
+    "canopy": "docker compose up -d --build --wait",
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "typecheck": "tsc -b",
+    "e2e": "playwright test",
+    "e2e:install": "playwright install chromium",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@ui-sdk/core": "0.1.0-beta.6",
+    "@ui-sdk/react": "0.1.0-beta.6",
+    "canopy.js": "workspace:*",
+    "next": "16.4.5",
+    "react": "19.3.1",
+    "react-dom": "19.3.1"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.64.1",
+    "@types/node": "24.19.2",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "typescript": "6.0.3",
+    "@testing-library/react": "16.3.3",
+    "happy-dom": "21.0.4",
+    "vitest": "5.0.5"
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "$schema": "https://json.schemastore.org/tsconfig",
+  "extends": "../tsconfig.universal.json",
+  "compilerOptions": {
+    "rootDir": ".",
+    "outDir": "../dist",
+    "tsBuildInfoFile": "../dist/.universal.tsbuildinfo"
+  },
+  "include": ["core", "client"],
+  "exclude": ["core/config"]
+}
