@@ -9,6 +9,9 @@
   "engines": {
     "node": ">=24.0.0"
   },
+  "bin": {
+    "canopy-stack": "./dist/cli/bin.js"
+  },
   "workspaces": [
     "examples/*"
   ],
@@ -118,6 +121,7 @@
   "files": [
     "dist",
     "src",
+    "templates/cli",
     "!**/*.tsbuildinfo"
   ],
   "scripts": {

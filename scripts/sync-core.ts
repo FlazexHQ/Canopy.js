@@ -6,7 +6,7 @@ import ts from "typescript"
 
 /**
  * Vendors the universal core of Canopy (protocol, matcher, query, policy, config and the schema DSL) into
- * `src/core`, and the protocol conformance vectors into `test/vectors`.
+ * `src/core`, the protocol conformance vectors into `test/vectors`, and the edge config into the CLI templates.
  *
  * Canopy is the source of truth for these modules: the server, the Rust equivalence suites and the MongoDB
  * differential tests all live there. This script copies every file reachable from the entry points below,
@@ -15,12 +15,13 @@ import ts from "typescript"
  *
  * Usage:
  *   bun scripts/sync-core.ts                 copy from ../Canopy (or CANOPY_REPO, or --from <path>)
- *   bun scripts/sync-core.ts --check         exit 1 when src/core or test/vectors differ from Canopy
+ *   bun scripts/sync-core.ts --check         exit 1 when vendored files differ from Canopy
  */
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..")
 const CORE_DIR = join(ROOT, "src", "core")
 const VECTORS_DIR = join(ROOT, "test", "vectors")
+const EDGE_CONFIG = join(ROOT, "templates", "cli", "Caddyfile")
 
 /** The import specifiers the SDK needs; everything they reach is vendored too. */
 const ENTRIES = [
@@ -192,6 +193,13 @@ function plan(repo: string): Map<string, string> {
       readFileSync(join(vectors, name), "utf8").replace(/\r\n/g, "\n"),
     )
   }
+  files.set(
+    EDGE_CONFIG,
+    readFileSync(join(repo, "deploy", "compose", "edge", "Caddyfile"), "utf8").replace(
+      /\r\n/g,
+      "\n",
+    ),
+  )
   return files
 }
 
@@ -228,7 +236,7 @@ function main(): void {
       if (!expected.has(path)) problems.push(`not in Canopy: ${toPosix(relative(ROOT, path))}`)
     if (problems.length > 0) {
       console.error(
-        `The vendored core is out of date with ${options.from}:\n  ${problems.join("\n  ")}\nRun bun scripts/sync-core.ts to update it.`,
+        `The vendored files are out of date with ${options.from}:\n  ${problems.join("\n  ")}\nRun bun scripts/sync-core.ts to update it.`,
       )
       process.exitCode = 1
     }

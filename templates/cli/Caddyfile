@@ -1,0 +1,52 @@
+# The Canopy edge: the one public entry of the container stack. It routes each path to the service that
+# owns it, so a service that is down only fails its own routes (503) while the others keep answering.
+#
+#   /realtime/v1        realtime   WebSocket, SSE and long poll transports
+#   /studio             studio     the admin dashboard (static files)
+#   everything else     api        REST, GraphQL, auth, storage, the admin API, /healthz and /readyz
+#
+# CANOPY_SITE is the address Caddy serves: ":8080" (the default) for plain HTTP behind your own proxy, or a
+# domain name such as "canopy.example.com" for automatic HTTPS with certificates from Let's Encrypt.
+{
+	admin off
+	servers {
+		trusted_proxies static private_ranges
+	}
+}
+
+{$CANOPY_SITE::8080} {
+	@realtime path /realtime/v1 /realtime/v1/*
+	handle @realtime {
+		reverse_proxy realtime:8080 {
+			flush_interval -1
+			health_uri /healthz
+			health_interval 5s
+		}
+	}
+
+	@studio path /studio /studio/*
+	handle @studio {
+		reverse_proxy studio:8080 {
+			health_uri /healthz
+			health_interval 5s
+		}
+	}
+
+	handle /edge/healthz {
+		respond "ok" 200
+	}
+
+	handle {
+		reverse_proxy api:8080 {
+			flush_interval -1
+			health_uri /healthz
+			health_interval 5s
+		}
+	}
+
+	handle_errors 502 503 504 {
+		header Content-Type "application/problem+json"
+		header Retry-After "5"
+		respond `{"type":"urn:canopy:error:unavailable","title":"Unavailable","status":503,"code":"CANOPY_UNAVAILABLE","detail":"The Canopy service behind {http.request.uri.path} is not answering. The other services keep running.","instance":"{http.request.uri.path}","requestId":"{http.request.uuid}"}` 503
+	}
+}

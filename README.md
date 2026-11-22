@@ -99,17 +99,23 @@ export default collection("todos", {
 
 ## Run Canopy
 
-Canopy runs as separate containers, so one failing service leaves the others up: `database` (MongoDB),
-`api` (REST, GraphQL, auth, storage, the admin API), `realtime` (live queries and mutations), `studio` (the
-admin dashboard) and `edge` (the one public entry on port 8080). With both repositories cloned side by side:
+Install Docker with Compose. In a project that has canopy.js installed, start the development stack with one command once the container images are published:
 
 ```bash
-cd ../Canopy
-bun run stack:up
+bun run canopy-stack up
 ```
 
-Studio is at <http://localhost:8080/studio>. See the [Canopy README](https://github.com/FlazexHQ/Canopy#run-canopy-as-containers)
-for the production stack and its settings.
+The first `up` creates `canopy/` with a config, a starter policy, a Compose file, the edge config and a generated master key in `canopy/.env`. Run `bun run canopy-stack init` to review or edit those files before starting. Images default to the installed canopy.js version. Pass `--tag <tag>` to `init` or `up`, or set `CANOPY_VERSION` to choose another tag.
+
+The images are currently unpublished. Clone Canopy and Canopy.js side by side, then build and start the stack from your project directory:
+
+```bash
+bun run canopy-stack up --build ../Canopy
+```
+
+Adjust the path to the Canopy checkout as needed. If the library checkout is elsewhere, pass `--canopy-js <path>`.
+
+Open Studio at <http://localhost:8080/studio>. Use `bun run canopy-stack logs api` to read the first owner setup token, `bun run canopy-stack status` to check the services, and `bun run canopy-stack down` to stop them. See the [Canopy README](https://github.com/FlazexHQ/Canopy#run-canopy-as-containers) for the production stack.
 
 ## Examples
 

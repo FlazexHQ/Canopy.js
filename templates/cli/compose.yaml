@@ -1,0 +1,137 @@
+name: canopy-__CANOPY_PROJECT__
+
+x-canopy-image: &canopy-image
+  image: ${CANOPY_IMAGE:-ghcr.io/flazexhq/canopy:${CANOPY_VERSION:-__CANOPY_VERSION__}}
+
+x-canopy-environment: &canopy-environment
+  MONGODB_URI: mongodb://database:27017/?replicaSet=rs0
+  CANOPY_DB: ${CANOPY_DB:-app}
+  CANOPY_METRICS_TOKEN: ${CANOPY_METRICS_TOKEN:-}
+  CANOPY_ENV: ${CANOPY_ENV:-development}
+  CANOPY_MASTER_KEY: ${CANOPY_MASTER_KEY:-}
+  CANOPY_PUBLISHABLE_KEYS: ${CANOPY_PUBLISHABLE_KEYS:-pk_dev}
+  CANOPY_SECRET_KEYS: ${CANOPY_SECRET_KEYS:-sk_dev_change_me}
+  CANOPY_JWT_JWKS_URL: ${CANOPY_JWT_JWKS_URL:-}
+  CANOPY_JWT_ISSUER: ${CANOPY_JWT_ISSUER:-}
+  CANOPY_JWT_AUDIENCE: ${CANOPY_JWT_AUDIENCE:-}
+  CANOPY_JWT_ROLES_CLAIM: ${CANOPY_JWT_ROLES_CLAIM:-}
+  CANOPY_LOG_LEVEL: ${CANOPY_LOG_LEVEL:-info}
+  CANOPY_TRUSTED_PROXIES: 172.28.0.10
+  CANOPY_POLICIES: /app/policies
+
+x-canopy-health: &canopy-health
+  test:
+    - CMD
+    - bun
+    - -e
+    - "const r = await fetch('http://127.0.0.1:8080/readyz'); process.exit(r.ok ? 0 : 1)"
+  interval: 5s
+  timeout: 5s
+  retries: 12
+  start_period: 10s
+
+services:
+  database:
+    image: ${CANOPY_MONGO_IMAGE:-mongo:8.0.34@sha256:b9924c330a8bbc5800fe9c69f04a84e221eca7b28fd049a0354147d9908fa142}
+    command: ["--replSet", "rs0", "--bind_ip_all"]
+    restart: unless-stopped
+    ports: ["127.0.0.1:${CANOPY_MONGO_PORT:-27017}:27017"]
+    volumes:
+      - database-data:/data/db
+    healthcheck:
+      test:
+        - CMD
+        - mongosh
+        - --quiet
+        - --eval
+        - "try { rs.status().ok } catch (e) { rs.initiate({ _id: 'rs0', members: [{ _id: 0, host: 'database:27017' }] }).ok }; quit(db.hello().isWritablePrimary ? 0 : 1)"
+      interval: 2s
+      timeout: 10s
+      retries: 30
+      start_period: 5s
+
+  api:
+    <<: *canopy-image
+    restart: unless-stopped
+    depends_on:
+      database:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:${CANOPY_METRICS_PORT:-9464}:9464"
+    environment:
+      <<: *canopy-environment
+      CANOPY_ROLE: api
+      CANOPY_NODE_ID: api-1
+      CANOPY_REALTIME_URL: http://realtime:8080
+    volumes:
+      - ./canopy.config.ts:/app/canopy.config.ts:ro
+      - ${CANOPY_POLICY_DIR:-./policies}:/app/policies:ro
+    stop_grace_period: 20s
+    healthcheck: *canopy-health
+
+  realtime:
+    <<: *canopy-image
+    restart: unless-stopped
+    depends_on:
+      database:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:${CANOPY_REALTIME_METRICS_PORT:-9465}:9464"
+    environment:
+      <<: *canopy-environment
+      CANOPY_ROLE: realtime
+      CANOPY_NODE_ID: realtime-1
+      CANOPY_REALTIME_SERVER: ${CANOPY_REALTIME_SERVER:-ts}
+      CANOPY_DRAIN_WINDOW: 30s
+    volumes:
+      - ./canopy.config.ts:/app/canopy.config.ts:ro
+      - ${CANOPY_POLICY_DIR:-./policies}:/app/policies:ro
+    stop_grace_period: 40s
+    healthcheck: *canopy-health
+
+  studio:
+    image: ${CANOPY_STUDIO_IMAGE:-ghcr.io/flazexhq/canopy-studio:${CANOPY_VERSION:-__CANOPY_VERSION__}}
+    restart: unless-stopped
+    read_only: true
+    tmpfs: [/tmp]
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    healthcheck:
+      test:
+        - CMD
+        - bun
+        - -e
+        - "const r = await fetch('http://127.0.0.1:8080/healthz'); process.exit(r.ok ? 0 : 1)"
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 5s
+
+  edge:
+    image: ${CANOPY_EDGE_IMAGE:-caddy:2.11.9@sha256:4851e54a46b206517c574821bb5cc67f170d2156041e9fbc4c9193b45e84a75b}
+    restart: unless-stopped
+    ports:
+      - "${CANOPY_PORT:-8080}:8080"
+    environment:
+      CANOPY_SITE: ${CANOPY_SITE:-:8080}
+    volumes:
+      - ./edge/Caddyfile:/etc/caddy/Caddyfile:ro
+      - edge-data:/data
+    networks:
+      default:
+        ipv4_address: 172.28.0.10
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8080/edge/healthz"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+
+networks:
+  default:
+    ipam:
+      config:
+        - subnet: 172.28.0.0/24
+
+volumes:
+  database-data: {}
+  edge-data: {}

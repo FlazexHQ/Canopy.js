@@ -14,7 +14,7 @@ the package has no runtime dependencies.
 
 Canopy (the platform: server, Studio, CLI, Rust core) lives in its own repository, cloned next to this one at
 `../Canopy`. It runs as separate containers (`database`, `api`, `realtime`, `studio`, `edge`); start them with
-`bun run stack:up` there. Nothing is published to npm yet and no license has been chosen. The only branch is
+`bun run stack:up` there. The library ships the separate `canopy-stack` command for local container stacks. Nothing is published to npm yet and no license has been chosen. The only branch is
 **`master`**.
 
 ## Layout
@@ -26,6 +26,8 @@ Canopy (the platform: server, Studio, CLI, Rust core) lives in its own repositor
   `bun run sync:core` copies them from `../Canopy` (or `CANOPY_REPO`, or `--from`), rewriting `@canopy/*`
   imports into relative paths; `bun run check:core` fails when the copy is stale. Change the core in Canopy,
   then sync.
+- `src/cli`: the server only stack CLI, with its own TypeScript project. It uses the files in
+  `templates/cli`. The Compose template is maintained here, and `sync:core` vendors the Caddyfile from Canopy.
 - `test/<module>`: Vitest suites per module; `test/vectors` holds the vendored protocol conformance vectors and
   `test/support/vectors.ts` replays them through the client. Tests import the package by its own name
   (`canopy.js`, `canopy.js/react`); `vitest.config.ts` aliases each name to its source.

@@ -62,6 +62,7 @@ export default defineConfig({
           setupFiles,
         },
       }),
+      project("cli", "node", ["test/cli/**/*.test.ts"]),
       project("react", "happy-dom", ["test/react/**/*.test.tsx"]),
       project("vue", "happy-dom", ["test/vue/**/*.test.ts"]),
       defineProject({

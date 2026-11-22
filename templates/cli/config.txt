@@ -1,0 +1,9 @@
+import { defineConfig, env } from "canopy.js/config"
+
+export default defineConfig({
+  mongodb: {
+    uri: env("MONGODB_URI", { default: "mongodb://localhost:27017/?directConnection=true" }),
+    database: env("CANOPY_DB", { default: "app" }),
+  },
+  policies: { dir: env("CANOPY_POLICIES", { default: "./policies" }) },
+})
