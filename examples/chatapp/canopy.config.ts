@@ -8,7 +8,7 @@ export default defineConfig({
   auth: builtin({ emailPassword: { minPasswordLength: 10, requireEmailVerification: false } }),
   cors: { origins: ["http://localhost:3000", "http://localhost:8080"] },
   keys: { publishable: ["pk_chat_local"] },
-  policies: { dir: "./policies" },
+  policies: { dir: env("CANOPY_POLICIES", { default: "./policies" }) },
   rest: true,
   realtime: true,
   graphql: true,
