@@ -23,6 +23,10 @@ export interface ConfigProblem {
 
 /** Thrown when a config does not validate. Lists every problem at once. */
 export class ConfigError extends CanopyError {
+  static {
+    ConfigError.registerType(ConfigError.prototype, "ConfigError")
+  }
+
   readonly problems: readonly ConfigProblem[]
 
   constructor(file: string | undefined, problems: readonly ConfigProblem[]) {
@@ -36,7 +40,6 @@ export class ConfigError extends CanopyError {
       `canopy: ${where} has ${count}\n\n${body}\n\nRun canopy config print --sources to see the resolved values and where they came from.`,
       { details: { problems: problems.map(({ path, message }) => ({ path, message })) } },
     )
-    this.name = "ConfigError"
     this.problems = problems
   }
 }

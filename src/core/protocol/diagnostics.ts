@@ -59,11 +59,14 @@ export function formatDiagnostic(
  * CLI only.
  */
 export class DiagnosticError extends CanopyError {
+  static {
+    DiagnosticError.registerType(DiagnosticError.prototype, "DiagnosticError")
+  }
+
   readonly diagnostic: Diagnostic
 
   constructor(diagnostic: Diagnostic, options: { readonly cause?: unknown } = {}) {
     super(diagnostic.code, diagnostic.summary, options)
-    this.name = "DiagnosticError"
     this.diagnostic = diagnostic
   }
 }

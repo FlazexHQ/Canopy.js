@@ -28,11 +28,14 @@ const COLLECTION = /^[A-Za-z_][\w.-]{0,119}$/
 
 /** Raised when a policy definition breaks a validation rule. */
 export class PolicyValidationError extends InvalidQueryError {
+  static {
+    PolicyValidationError.registerType(PolicyValidationError.prototype, "PolicyValidationError")
+  }
+
   readonly collection: string
 
   constructor(collection: string, message: string) {
     super(`Invalid policies for collection '${collection}': ${message}`)
-    this.name = "PolicyValidationError"
     this.collection = collection
   }
 }

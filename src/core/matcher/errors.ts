@@ -6,16 +6,22 @@ import { type CanopyErrorOptions, InvalidQueryError } from "../protocol/index.ts
  * polling observer) instead of rejecting them.
  */
 export class UnsupportedQueryError extends InvalidQueryError {
+  static {
+    UnsupportedQueryError.registerType(UnsupportedQueryError.prototype, "UnsupportedQueryError")
+  }
+
   constructor(message: string, options?: CanopyErrorOptions) {
     super(message, options)
-    this.name = "UnsupportedQueryError"
   }
 }
 
 /** Raised by the updater when MongoDB would reject the update. The message mirrors MongoDB's reason. */
 export class UpdateError extends InvalidQueryError {
+  static {
+    UpdateError.registerType(UpdateError.prototype, "UpdateError")
+  }
+
   constructor(message: string, options?: CanopyErrorOptions) {
     super(message, options)
-    this.name = "UpdateError"
   }
 }

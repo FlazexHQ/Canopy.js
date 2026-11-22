@@ -127,6 +127,7 @@ const HELP: Readonly<Partial<Record<ErrorCode, { readonly hint: string; readonly
   }
 
 const BRAND: unique symbol = Symbol.for("canopy.error")
+const ERROR_TYPE: unique symbol = Symbol.for("canopy.error.type")
 
 /**
  * The root of every error Canopy throws. `code` is stable and safe to branch on; `message` is for humans.
@@ -139,9 +140,42 @@ export class CanopyError extends Error {
   /** The slug of the docs page about this error, under `errors/` on the documentation site. */
   readonly docs: string | undefined
 
+  /** Recognizes branded errors from another copy of Canopy, including their registered base classes. */
+  static override [Symbol.hasInstance](error: unknown): boolean {
+    if (typeof error !== "object" || error === null || !(BRAND in error) || error[BRAND] !== true)
+      return false
+    // biome-ignore lint/complexity/noThisInStatic: The receiver is the class used by instanceof.
+    const errorClass: typeof CanopyError = this
+    if (
+      errorClass === CanopyError ||
+      Function.prototype[Symbol.hasInstance].call(errorClass, error)
+    )
+      return true
+
+    const type: unknown = Object.getOwnPropertyDescriptor(errorClass.prototype, ERROR_TYPE)?.value
+    if (typeof type !== "string") return false
+
+    let hasRegisteredType = false
+    for (
+      let prototype: object | null = Object.getPrototypeOf(error);
+      prototype !== null;
+      prototype = Object.getPrototypeOf(prototype)
+    ) {
+      const ancestorType: unknown = Object.getOwnPropertyDescriptor(prototype, ERROR_TYPE)?.value
+      if (ancestorType === type) return true
+      if (typeof ancestorType === "string") hasRegisteredType = true
+    }
+    return !hasRegisteredType && "name" in error && error.name === type
+  }
+
+  /** Assigns a stable subclass name and identity shared by duplicate copies of the class. */
+  protected static registerType(prototype: object, name: string): void {
+    Object.defineProperty(prototype, ERROR_TYPE, { value: name })
+  }
+
   constructor(code: ErrorCode, message: string, options: CanopyErrorOptions = {}) {
     super(message, options.cause === undefined ? undefined : { cause: options.cause })
-    this.name = "CanopyError"
+    this.name = (this as { [ERROR_TYPE]?: string })[ERROR_TYPE] ?? "CanopyError"
     this.code = code
     this.details = options.details
     this.hint = options.hint ?? HELP[code]?.hint
@@ -168,81 +202,111 @@ export interface WireError {
 
 /** Raised when a token or key is missing, invalid or expired. */
 export class UnauthorizedError extends CanopyError {
+  static {
+    UnauthorizedError.registerType(UnauthorizedError.prototype, "UnauthorizedError")
+  }
+
   constructor(message: string, options?: CanopyErrorOptions, expired = false) {
     super(expired ? ErrorCode.TokenExpired : ErrorCode.Unauthorized, message, options)
-    this.name = "UnauthorizedError"
   }
 }
 
 /** Raised when an operation is not granted at all, or the caller is revoked or banned. */
 export class ForbiddenError extends CanopyError {
+  static {
+    ForbiddenError.registerType(ForbiddenError.prototype, "ForbiddenError")
+  }
+
   constructor(message: string, options?: CanopyErrorOptions) {
     super(ErrorCode.Forbidden, message, options)
-    this.name = "ForbiddenError"
   }
 }
 
 /** Raised when a collection or document does not exist or is not visible to the caller. */
 export class NotFoundError extends CanopyError {
+  static {
+    NotFoundError.registerType(NotFoundError.prototype, "NotFoundError")
+  }
+
   constructor(message: string, options?: CanopyErrorOptions) {
     super(ErrorCode.NotFound, message, options)
-    this.name = "NotFoundError"
   }
 }
 
 /** Raised when a write fails a `check` clause. */
 export class PolicyViolationError extends CanopyError {
+  static {
+    PolicyViolationError.registerType(PolicyViolationError.prototype, "PolicyViolationError")
+  }
+
   constructor(message: string, options?: CanopyErrorOptions) {
     super(ErrorCode.PolicyViolation, message, options)
-    this.name = "PolicyViolationError"
   }
 }
 
 /** Raised for malformed queries, banned operators, unreadable path references and exceeded query limits. */
 export class InvalidQueryError extends CanopyError {
+  static {
+    InvalidQueryError.registerType(InvalidQueryError.prototype, "InvalidQueryError")
+  }
+
   constructor(message: string, options?: CanopyErrorOptions) {
     super(ErrorCode.InvalidQuery, message, options)
-    this.name = "InvalidQueryError"
   }
 }
 
 /** Raised when a compare and set precondition fails or a mutation ID is reused by another subject. */
 export class ConflictError extends CanopyError {
+  static {
+    ConflictError.registerType(ConflictError.prototype, "ConflictError")
+  }
+
   constructor(message: string, options?: CanopyErrorOptions) {
     super(ErrorCode.Conflict, message, options)
-    this.name = "ConflictError"
   }
 }
 
 /** Raised when a document fails validation. */
 export class ValidationError extends CanopyError {
+  static {
+    ValidationError.registerType(ValidationError.prototype, "ValidationError")
+  }
+
   constructor(message: string, options?: CanopyErrorOptions) {
     super(ErrorCode.ValidationFailed, message, options)
-    this.name = "ValidationError"
   }
 }
 
 /** Raised when a rate or resource limit is exceeded. */
 export class RateLimitError extends CanopyError {
+  static {
+    RateLimitError.registerType(RateLimitError.prototype, "RateLimitError")
+  }
+
   constructor(message: string, options?: CanopyErrorOptions) {
     super(ErrorCode.RateLimited, message, options)
-    this.name = "RateLimitError"
   }
 }
 
 /** Raised when a peer violates the wire protocol. */
 export class ProtocolError extends CanopyError {
+  static {
+    ProtocolError.registerType(ProtocolError.prototype, "ProtocolError")
+  }
+
   constructor(message: string, options?: CanopyErrorOptions) {
     super(ErrorCode.ProtocolError, message, options)
-    this.name = "ProtocolError"
   }
 }
 
 /** The claims hook of built in auth failed, so no access token was issued (fail closed). */
 export class AuthHookFailedError extends CanopyError {
+  static {
+    AuthHookFailedError.registerType(AuthHookFailedError.prototype, "AuthHookFailedError")
+  }
+
   constructor(message: string, options: CanopyErrorOptions = {}) {
     super(ErrorCode.AuthHookFailed, message, options)
-    this.name = "AuthHookFailedError"
   }
 }
 
@@ -281,16 +345,13 @@ export function errorFromWire(error: WireError, options: CanopyErrorOptions = {}
 
 /**
  * Whether `error` is a {@link CanopyError}, optionally with a given code: `isCanopyError(e, "CANOPY_CONFLICT")`.
- * It narrows `error.code` and works across duplicate copies of the package, where `instanceof` does not.
+ * It narrows `error.code` and works across duplicate copies of the package.
  */
 export function isCanopyError<C extends ErrorCode = ErrorCode>(
   error: unknown,
   code?: C,
 ): error is CanopyError & { readonly code: C } {
-  if (typeof error !== "object" || error === null) return false
-  if (!(error instanceof CanopyError) && (error as { [BRAND]?: unknown })[BRAND] !== true)
-    return false
-  return code === undefined || (error as { code?: unknown }).code === code
+  return error instanceof CanopyError && (code === undefined || error.code === code)
 }
 
 /** Converts any thrown value into a {@link CanopyError}, mapping unknown failures to `CANOPY_INTERNAL`. */
