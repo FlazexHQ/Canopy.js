@@ -36,7 +36,11 @@ export class ServerSocket implements WebSocketLike {
   }
 
   /** Opens and answers the hello with a welcome. */
-  async accept(sid = "n1.s", resumed = false): Promise<void> {
+  async accept(
+    sid = "n1.s",
+    resumed = false,
+    capabilities?: { readonly mutations: boolean },
+  ): Promise<void> {
     this.readyState = 1
     this.onopen?.({})
     await vi.waitFor(() => expect(this.of("hello").length).toBeGreaterThan(0))
@@ -51,6 +55,7 @@ export class ServerSocket implements WebSocketLike {
       pv: "p",
       ct: "1",
       caps: [],
+      ...(capabilities === undefined ? {} : { capabilities }),
       limits: { subs: 100 },
     })
   }

@@ -13,6 +13,7 @@ import {
   SUBPROTOCOL,
   unbatch,
   uuidv7,
+  type WelcomeCapabilities,
 } from "../core/protocol/index.ts"
 import type {
   ClientInternals,
@@ -92,6 +93,7 @@ export class CanopyClient<
   private sid: string | undefined
   private lastSeq = 0
   private welcomed = false
+  private advertisedCapabilities: WelcomeCapabilities | undefined
   private attempt = 0
   private reconnectTimer: ReturnType<typeof setTimeout> | undefined
   private heartbeatTimer: ReturnType<typeof setInterval> | undefined
@@ -126,6 +128,7 @@ export class CanopyClient<
       store: this.store,
       client: options,
       closed: () => this.closed,
+      mutationsSupported: () => this.advertisedCapabilities?.mutations,
       channel: () => {
         const socket = this.socket
         if (socket === undefined || !this.welcomed || socket.readyState !== 1) return undefined
@@ -238,6 +241,11 @@ export class CanopyClient<
   /** Calls `listener` whenever a mutation is rolled back. */
   onMutationError(listener: (error: Error, mutationId: string) => void): () => void {
     return this.outbox.onMutationError(listener)
+  }
+
+  /** Features advertised in the latest welcome, or undefined when the endpoint has not advertised them. */
+  get capabilities(): WelcomeCapabilities | undefined {
+    return this.advertisedCapabilities
   }
 
   /** The number of mutations not yet acknowledged. */
@@ -551,6 +559,8 @@ export class CanopyClient<
   private handle(message: SequencedMessage): void {
     if (message.t === "welcome") {
       this.welcomed = true
+      this.advertisedCapabilities =
+        message.capabilities === undefined ? undefined : Object.freeze(message.capabilities)
       this.attempt = 0
       this.heartbeatMs = message.hb
       this.startHeartbeat()

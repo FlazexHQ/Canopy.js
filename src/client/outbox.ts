@@ -42,6 +42,8 @@ interface PersistedMutation {
 }
 
 const HOUR = 3_600_000
+const MUTATIONS_UNAVAILABLE =
+  "This realtime endpoint does not support mutations. Write through your own API or Canopy REST."
 
 /** Options of an {@link Outbox}. */
 export interface OutboxOptions {
@@ -49,6 +51,8 @@ export interface OutboxOptions {
   readonly client: Pick<ClientOptions, "auth" | "persist" | "mutationTtlMs" | "maxInFlight">
   /** Whether the client was closed, so new mutations are refused at once. */
   readonly closed: () => boolean
+  /** Mutation support from the latest handshake, if advertised. */
+  readonly mutationsSupported: () => boolean | undefined
   /** A writer for the connection when it is open and welcomed, else `undefined`. */
   readonly channel: () => ((text: string) => void) | undefined
 }
@@ -178,7 +182,7 @@ export class Outbox {
       args: record.m.args,
       createdAt: record.at,
       retry: () => {
-        forget()
+        if (this.options.mutationsSupported() !== false) forget()
         return this.mutate(record.m.c, record.m.op, record.m.args, record.layers, record.ids)
       },
       discard: forget,
@@ -221,6 +225,8 @@ export class Outbox {
     promise.catch(() => {})
     if (this.options.closed()) {
       reject(new CanopyError(ErrorCode.Unavailable, "The client is closed"))
+    } else if (this.options.mutationsSupported() === false) {
+      reject(new CanopyError(ErrorCode.Unavailable, MUTATIONS_UNAVAILABLE))
     } else {
       for (const layer of layers) this.options.store.addLayer(mutationId, layer)
       const message: MutMessage = { t: "mut", id: mutationId, c: collection, op, args }
@@ -263,6 +269,14 @@ export class Outbox {
   /** Sends queued mutations in order, keeping at most `maxInFlight` unacknowledged. */
   pump(): void {
     if (this.restoring !== undefined) return
+    if (this.options.mutationsSupported() === false) {
+      this.inFlight = 0
+      for (const pending of this.queue.splice(0)) {
+        this.forgetPersisted(pending)
+        this.reject(pending, new CanopyError(ErrorCode.Unavailable, MUTATIONS_UNAVAILABLE))
+      }
+      return
+    }
     const write = this.options.channel()
     if (write === undefined) return
     const max = this.options.client.maxInFlight ?? 32
@@ -283,17 +297,13 @@ export class Outbox {
     const [pending] = this.queue.splice(index, 1)
     if (pending === undefined) return
     if (pending.sent) this.inFlight = Math.max(0, this.inFlight - 1)
-    const persist = this.options.client.persist
-    if (persist !== undefined)
-      void pending.persisted?.then((key) => persist.delete("mutations", key)).catch(() => {})
+    this.forgetPersisted(pending)
     const { message } = pending
     if (!ack.ok) {
-      store.dropLayer(message.id)
-      const error = errorFromWire(
-        ack.err ?? { code: ErrorCode.Internal, msg: "The mutation failed" },
+      this.reject(
+        pending,
+        errorFromWire(ack.err ?? { code: ErrorCode.Internal, msg: "The mutation failed" }),
       )
-      for (const listener of this.errorListeners) listener(error, message.id)
-      pending.reject(error)
       this.pump()
       return
     }
@@ -309,6 +319,19 @@ export class Outbox {
       insertedIds: ack.res?.insertedIds ?? [],
     })
     this.pump()
+  }
+
+  private forgetPersisted(pending: PendingMutation): void {
+    const persist = this.options.client.persist
+    if (persist !== undefined)
+      void pending.persisted?.then((key) => persist.delete("mutations", key)).catch(() => {})
+  }
+
+  private reject(pending: PendingMutation, error: Error): void {
+    const id = pending.message.id
+    this.options.store.dropLayer(id)
+    pending.reject(error)
+    for (const listener of this.errorListeners) listener(error, id)
   }
 
   /**

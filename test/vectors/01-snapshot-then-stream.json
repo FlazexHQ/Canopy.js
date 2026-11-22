@@ -25,6 +25,9 @@
           "pv": "sha256:x",
           "ct": "10",
           "caps": ["batch", "diff"],
+          "capabilities": {
+            "mutations": false
+          },
           "limits": {
             "subs": 100
           }

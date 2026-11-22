@@ -104,6 +104,7 @@ export {
   type UnsubMessage,
   unbatch,
   type WatermarkMessage,
+  type WelcomeCapabilities,
   type WelcomeLimits,
   type WelcomeMessage,
 } from "./messages.ts"
