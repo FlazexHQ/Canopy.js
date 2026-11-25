@@ -149,14 +149,25 @@ const PROVISIONAL_MS = 5000
 /** Applies MongoDB update operators to a copy of a document. */
 export type Updater = (doc: Document, update: Document) => Document
 
-/** Runs `task` after the browser has painted, or on the next turn where nothing paints. */
+/** Lets the browser paint first, with a timer for tabs where animation frames are paused. */
 function afterPaint(task: () => void): void {
   const host = globalThis as { requestAnimationFrame?: (callback: () => void) => unknown }
-  if (typeof host.requestAnimationFrame === "function")
-    host.requestAnimationFrame(() => {
-      setTimeout(task, 0)
-    })
-  else setTimeout(task, 0)
+  if (typeof host.requestAnimationFrame !== "function") {
+    setTimeout(task, 0)
+    return
+  }
+  let ran = false
+  const run = (): void => {
+    if (ran) return
+    ran = true
+    task()
+  }
+  const timer = setTimeout(run, 100)
+  host.requestAnimationFrame(() => {
+    if (ran) return
+    clearTimeout(timer)
+    setTimeout(run, 0)
+  })
 }
 
 /** Whether a compiled filter matches a document; `false` when there is none or it cannot decide. */
@@ -178,8 +189,8 @@ function asError(error: unknown): Error {
  *
  * Filters, sorts, projections and updates run in the Rust client core, loaded once per page after the first
  * live query has painted, or as soon as something needs it (an optimistic change, a projected query). Until
- * it has loaded, a query renders the server's members in the order of its snapshot, which the server sends
- * sorted; a query that needs the core for its next state (an optimistic change, a change that may move a
+ * it has loaded, a query renders the server's members as stale in the order of its snapshot, which the
+ * server sends sorted. A query that needs the core for its next state (an optimistic change, a change that may move a
  * member, a projection) keeps its previous state and renders once the core arrives.
  */
 export class Store {
@@ -194,7 +205,7 @@ export class Store {
   private updater: Updater | undefined
   private engine: Engine | undefined
   private loading: Promise<void> | undefined
-  private failed = false
+  private coreError: Error | undefined
   private painted = false
 
   /** Called when a layer acknowledged without echo times out, so the affected queries can be refetched. */
@@ -220,8 +231,8 @@ export class Store {
       (engine) => this.useEngine(engine),
       (error: unknown) => {
         this.loading = undefined
-        this.failed = true
-        this.engineFailed(error)
+        this.coreError = asError(error)
+        this.engineFailed(this.coreError)
       },
     )
     return this.loading
@@ -229,7 +240,7 @@ export class Store {
 
   /** Starts loading the client core for something that needs it, unless a load has already failed. */
   private needCore(): void {
-    if (this.engine === undefined && !this.failed) void this.loadCore()
+    if (this.engine === undefined && this.coreError === undefined) void this.loadCore()
   }
 
   /** Installs an updater that folds update layers in place of the client core, and re-renders every query. */
@@ -259,8 +270,11 @@ export class Store {
   }
 
   /** The client core could not load: every query waiting for it ends with that error. */
-  private engineFailed(error: unknown): void {
-    for (const [id, query] of this.queries) if (query.dirty) this.fail(id, asError(error))
+  private engineFailed(error: Error): void {
+    for (const [id, query] of this.queries) {
+      if (query.dirty) this.fail(id, error)
+      else if (query.status === "ready") this.touch([id])
+    }
   }
 
   /** Compiles the filter of a query and checks its sort, throwing for an invalid one. */
@@ -463,6 +477,9 @@ export class Store {
       const loaded = loadedEngine()
       if (loaded !== undefined) this.useEngine(loaded)
     }
+    const waitingForCore = query.status === "ready" && this.engine === undefined
+    const error = waitingForCore ? this.coreError : query.error
+    const status = waitingForCore ? (error === undefined ? "stale" : "error") : query.status
     if (query.dirty) {
       const members = this.render(query)
       if (members !== undefined) {
@@ -473,15 +490,19 @@ export class Store {
           previous.every((doc, index) => doc === members[index])
         query.state = {
           data: same ? previous : members,
-          status: query.status,
-          error: query.error,
+          status,
+          error,
+        }
+        if (!this.painted && status !== "loading") {
+          this.painted = true
+          afterPaint(() => this.needCore())
         }
         return query.state
       }
       this.needCore()
     }
-    if (query.status === "error" && query.state.error !== query.error)
-      query.state = { data: query.state.data, status: query.status, error: query.error }
+    if (status === "error" && query.state.error !== error)
+      query.state = { data: query.state.data, status, error }
     return query.state
   }
 
@@ -610,10 +631,6 @@ export class Store {
         const after = this.state(id)
         if (before === after) continue
         for (const listener of this.listeners.get(id) ?? []) listener()
-        if (!this.painted && after.status !== "loading") {
-          this.painted = true
-          afterPaint(() => this.needCore())
-        }
       }
     })
   }

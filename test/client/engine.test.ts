@@ -13,6 +13,7 @@ const flush = async (): Promise<void> => {
 
 afterEach(() => {
   vi.restoreAllMocks()
+  vi.unstubAllGlobals()
 })
 
 describe("the client core", () => {
@@ -34,10 +35,13 @@ describe("the client core", () => {
       notified += 1
     })
     await flush()
-    expect(store.state("q").status).toBe("ready")
+    expect(store.state("q").status).toBe("stale")
     expect(store.state("q").data.map((doc) => doc["_id"])).toEqual([1, 3, 2])
     expect(notified).toBe(1)
     expect(engine.loadedEngine()).toBeUndefined()
+    await store.loadCore()
+    expect(store.state("q").status).toBe("ready")
+    expect(store.state("q").data.map((doc) => doc["_id"])).toEqual([1, 3, 2])
   })
 
   it("keeps server order for a snapshot resubscribed before any member arrived", async () => {
@@ -52,7 +56,7 @@ describe("the client core", () => {
     store.added("todos", 2, { _id: 2, rank: 1 }, "1", ["q"])
     store.ready("q")
     await flush()
-    expect(store.state("q").status).toBe("ready")
+    expect(store.state("q").status).toBe("stale")
     expect(store.state("q").data.map((doc) => doc["_id"])).toEqual([1, 3, 2])
     expect(engine.loadedEngine()).toBeUndefined()
   })
@@ -69,6 +73,36 @@ describe("the client core", () => {
     store.added("todos", 1, { _id: 1 }, "1", ["q"])
     store.ready("q")
     await vi.waitFor(() => expect(engine.loadedEngine()).toBeDefined(), { timeout: 5000 })
+  })
+
+  it("supports immediate optimistic membership changes when the first query becomes ready", async () => {
+    vi.resetModules()
+    const { Store } = await import("../../src/client/store.ts")
+    const { loadedEngine } = await import("../../src/client/engine.ts")
+    vi.stubGlobal("requestAnimationFrame", () => 1)
+    const store = new Store()
+    store.addQuery("open", "todos", { filter: { done: false }, sort: { rank: 1 } })
+    store.addQuery("done", "todos", { filter: { done: true }, sort: { rank: 1 } })
+    store.ready("open")
+    store.ready("done")
+
+    expect(loadedEngine()).toBeUndefined()
+    await vi.waitFor(() => expect(store.state("open").status).toBe("ready"), { timeout: 5000 })
+    store.addLayer("insert", {
+      kind: "insert",
+      coll: "todos",
+      id: 1,
+      doc: { _id: 1, done: false, rank: 1 },
+    })
+    expect(store.state("open").data).toEqual([{ _id: 1, done: false, rank: 1 }])
+    store.addLayer("update", {
+      kind: "update",
+      coll: "todos",
+      id: 1,
+      update: { $set: { done: true } },
+    })
+    expect(store.state("open").data).toEqual([])
+    expect(store.state("done").data).toEqual([{ _id: 1, done: true, rank: 1 }])
   })
 
   it("holds a query whose member changed under its sort until the core sorts it", async () => {
