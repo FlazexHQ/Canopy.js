@@ -1,12 +1,12 @@
 {
   "source": "packages/wasm/generated",
   "files": {
-    "client/canopy_client.js": "97f8c07a1ec646409266f6c864bf976fe4b5bd6b9709199a1d76f85341970500",
-    "client/canopy_client.d.ts": "6e10f7c9678139e3d69561440c691dd7f44d4ff7765cfe62154137146c1bbc68",
-    "client/canopy_client_bg.wasm": "013ee6d18bbba6af6d6e0de85c4e65649382a9c2e6defca0aa1358dbc72a30a0",
-    "client/canopy_client_js.js": "b36e16261bebb062cb527ef8ba1099ff6735661e13aac936df035f3796535792",
-    "client/canopy_client_js.d.ts": "5733aaa00fe48225acf9360001b8d8035117ba29019ae09dc307d649e80da7e2",
-    "client/canopy_client_translated.js": "3c26cd947ac8ba61c0c2ef8e08aeae4719b2598857d1282c0d162343c9a8ea95",
+    "client/canopy_client.js": "e48607e7f73298b60a3e33b8625fe404c2451edb8d791f3fdf98bd8d6e73281b",
+    "client/canopy_client.d.ts": "4a78d9be4a0a5b4728b9df2a6b03e20b8fa4bfb72158f808472dbd8be8de992a",
+    "client/canopy_client_bg.wasm": "7ea7700d377e72c368e77e9f9c9feccd2670aa199f83bde2d7f2a50c4711e081",
+    "client/canopy_client_js.js": "dd415b6fafcf3f29bc79e880624f0f18944592571c3d1215af297293e3d65d41",
+    "client/canopy_client_js.d.ts": "765b67eeac547597f35c2ed47eff4638ded779c55e20d41b027a9616c107f02e",
+    "client/canopy_client_translated.js": "6b59b298786e12d9889ef999ea12ea9f013d082d300d6403a223fae7b9a2164d",
     "transforms/canopy_transforms.js": "41fbb7bcf2f1c2491647413f4befab666004e8e413139e2c18d734f5e4ffa8e3",
     "transforms/canopy_transforms.d.ts": "80a909691fdbcc098cc4293f3a516639514e46b31e14e8dae860d991f1ea1ec7",
     "transforms/canopy_transforms_bg.wasm": "ed8f3d1469ecd264899dff1a58bd0a7f1aa4d35253e2ed391663075e39dfbd60",

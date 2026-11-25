@@ -16,6 +16,15 @@ export class DocumentCache {
         wasm.__wbg_documentcache_free(ptr, 0);
     }
     /**
+     * Replaces the first `count` slot numbers in scratch space with their decisions.
+     * @param {Filter} filter
+     * @param {number} count
+     */
+    matchBatch(filter, count) {
+        _assertClass(filter, Filter);
+        wasm.documentcache_matchBatch(this.__wbg_ptr, filter.__wbg_ptr, count);
+    }
+    /**
      * Decides the retained documents of `slots` with `filter`, one byte per slot as `matchConcatenated`
      * returns them; a slot that holds no document is undecided.
      * @param {Filter} filter
@@ -55,6 +64,15 @@ export class DocumentCache {
         const ptr0 = passArray32ToWasm0(slots, wasm.__wbindgen_export2);
         const len0 = WASM_VECTOR_LEN;
         wasm.documentcache_release(this.__wbg_ptr, ptr0, len0);
+    }
+    /**
+     * Reserves scratch space for slot numbers and returns its byte offset in linear memory.
+     * @param {number} capacity
+     * @returns {number}
+     */
+    reserveMatchBatch(capacity) {
+        const ret = wasm.documentcache_reserveMatchBatch(this.__wbg_ptr, capacity);
+        return ret >>> 0;
     }
     /**
      * Decodes BSON documents laid end to end and retains each one. Returns their slots, in order. Throws, and
@@ -582,3 +600,6 @@ let WASM_VECTOR_LEN = 0;
 import { instantiate } from "./canopy_client_translated.js";
 let wasm = instantiate(__wbg_get_imports());
 wasm.__wbindgen_start?.();
+
+/** Returns the current linear memory buffer for the document cache batch. */
+export function matchBatchMemory() { return wasm.memory.buffer; }

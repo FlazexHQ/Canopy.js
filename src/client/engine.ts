@@ -25,6 +25,7 @@ export interface DocumentFilter {
   /**
    * Decides every document in one call: `true` for a match, `false` for no match, `undefined` when the
    * core cannot decide (callers then rely on the server).
+   * Pass a new document object when its BSON content changes, including changes to nested values.
    */
   matchAll(documents: readonly Document[]): (boolean | undefined)[]
   /** Releases the compiled filter. */
@@ -63,11 +64,14 @@ interface CacheBinding {
   retain(documents: Uint8Array): Uint32Array
   release(slots: Uint32Array): void
   matchFilter(filter: FilterBinding, slots: Uint32Array): Uint8Array
+  reserveMatchBatch(capacity: number): number
+  matchBatch(filter: FilterBinding, count: number): void
 }
 
 interface ClientBinding {
   readonly Filter: { fromBson(bytes: Uint8Array): FilterBinding }
   readonly DocumentCache: new () => CacheBinding
+  matchBatchMemory(): ArrayBuffer
 }
 
 interface UpdateCacheBinding {
@@ -192,9 +196,9 @@ function calling<T>(call: () => T): T {
   }
 }
 
-/** Decides documents with a compiled filter, one byte per document as the core returns them. */
+/** The core's decisions in document order. A scratch view is valid until the next call. */
 interface Retained {
-  decide(compiled: FilterBinding, documents: readonly Document[]): Uint8Array
+  decide(compiled: FilterBinding, documents: readonly Document[]): Uint8Array | Uint32Array
 }
 
 /**
@@ -213,10 +217,44 @@ function retainedDocuments(client: ClientBinding): Retained {
   const registry = new FinalizationRegistry<number>((slot) => {
     collected.push(slot)
   })
+  let capacity = 0
+  let offset = 0
+  let batch = new Uint32Array(0)
+  let batchInUse = false
+  function batchView(): Uint32Array {
+    const memory = client.matchBatchMemory()
+    if (batch.buffer !== memory || batch.length !== capacity)
+      batch = new Uint32Array(memory, offset, capacity)
+    return batch
+  }
   return {
     decide(compiled, documents) {
       if (collected.length > 0) cache.release(Uint32Array.from(collected.splice(0)))
       const count = documents.length
+      if (!batchInUse) {
+        batchInUse = true
+        try {
+          if (capacity < count) {
+            const next = Math.max(count, capacity * 2)
+            offset = cache.reserveMatchBatch(next)
+            capacity = next
+          }
+          const input = batchView()
+          let index = 0
+          for (; index < count; index += 1) {
+            const slot = slots.get(documents[index] as Document)
+            if (slot === undefined) break
+            input[index] = slot
+          }
+          if (index === count && input.buffer === client.matchBatchMemory()) {
+            cache.matchBatch(compiled, count)
+            return batchView()
+          }
+        } finally {
+          batchInUse = false
+        }
+      }
+
       const found = new Uint32Array(count)
       const fresh: Document[] = []
       const retain: Document[] = []

@@ -9,6 +9,10 @@ export class DocumentCache {
     free(): void;
     [Symbol.dispose](): void;
     /**
+     * Replaces the first `count` slot numbers in scratch space with their decisions.
+     */
+    matchBatch(filter: Filter, count: number): void;
+    /**
      * Decides the retained documents of `slots` with `filter`, one byte per slot as `matchConcatenated`
      * returns them; a slot that holds no document is undecided.
      */
@@ -21,6 +25,10 @@ export class DocumentCache {
      * Releases slots, so they can hold other documents. Slots that hold nothing are ignored.
      */
     release(slots: Uint32Array | number[]): void;
+    /**
+     * Reserves scratch space for slot numbers and returns its byte offset in linear memory.
+     */
+    reserveMatchBatch(capacity: number): number;
     /**
      * Decodes BSON documents laid end to end and retains each one. Returns their slots, in order. Throws, and
      * retains nothing, when the BSON is malformed.
@@ -93,3 +101,6 @@ export function ejsonToBson(text: string): Uint8Array;
  */
 export function engine(): string;
 
+
+/** Returns the current linear memory buffer for the document cache batch. */
+export function matchBatchMemory(): ArrayBuffer;

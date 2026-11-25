@@ -9,6 +9,10 @@ export class DocumentCache {
     free(): void;
     [Symbol.dispose](): void;
     /**
+     * Replaces the first `count` slot numbers in scratch space with their decisions.
+     */
+    matchBatch(filter: Filter, count: number): void;
+    /**
      * Decides the retained documents of `slots` with `filter`, one byte per slot as `matchConcatenated`
      * returns them; a slot that holds no document is undecided.
      */
@@ -21,6 +25,10 @@ export class DocumentCache {
      * Releases slots, so they can hold other documents. Slots that hold nothing are ignored.
      */
     release(slots: Uint32Array | number[]): void;
+    /**
+     * Reserves scratch space for slot numbers and returns its byte offset in linear memory.
+     */
+    reserveMatchBatch(capacity: number): number;
     /**
      * Decodes BSON documents laid end to end and retains each one. Returns their slots, in order. Throws, and
      * retains nothing, when the BSON is malformed.
@@ -102,9 +110,11 @@ export interface InitOutput {
     readonly __wbg_filter_free: (a: number, b: number) => void;
     readonly bsonToEjson: (a: number, b: number, c: number, d: number) => void;
     readonly canonicalEjson: (a: number, b: number, c: number) => void;
+    readonly documentcache_matchBatch: (a: number, b: number, c: number) => void;
     readonly documentcache_matchFilter: (a: number, b: number, c: number, d: number, e: number) => void;
     readonly documentcache_new: () => number;
     readonly documentcache_release: (a: number, b: number, c: number) => void;
+    readonly documentcache_reserveMatchBatch: (a: number, b: number) => number;
     readonly documentcache_retain: (a: number, b: number, c: number, d: number) => void;
     readonly documentpage_bson: (a: number, b: number) => void;
     readonly documentpage_fromBson: (a: number, b: number, c: number) => void;
@@ -142,3 +152,6 @@ export function initSync(module: { module: SyncInitInput } | SyncInitInput): Ini
  * @returns {Promise<InitOutput>}
  */
 export default function __wbg_init (module_or_path?: { module_or_path: InitInput | Promise<InitInput> } | InitInput | Promise<InitInput>): Promise<InitOutput>;
+
+/** Returns the current linear memory buffer for the document cache batch. */
+export function matchBatchMemory(): ArrayBuffer;
