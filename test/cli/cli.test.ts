@@ -93,9 +93,14 @@ describe("canopy-stack", () => {
 
   it("scaffolds a complete stack with a random key and installed version", async () => {
     expect(await cli(["init"])).toBe(0)
-    expect(read("compose.yaml")).toContain(`ghcr.io/flazexhq/canopy:\${CANOPY_VERSION:-2.3.4}`)
     expect(read("compose.yaml")).toContain(
-      `ghcr.io/flazexhq/canopy-studio:\${CANOPY_VERSION:-2.3.4}`,
+      `image: \${CANOPY_IMAGE:-ghcr.io/flazexhq/canopy-legacy:\${CANOPY_VERSION:-2.3.4}}`,
+    )
+    expect(read("compose.yaml")).toContain(
+      `  studio:
+    image: \${CANOPY_GATEWAY_IMAGE:-ghcr.io/flazexhq/canopy:\${CANOPY_VERSION:-2.3.4}}
+    environment:
+      CANOPY_ROLE: studio`,
     )
     expect(read("canopy.config.ts")).toContain('from "canopy.js/config"')
     expect(read("policies/notes.ts")).toContain('from "canopy.js/policy"')
@@ -184,17 +189,21 @@ describe("canopy-stack", () => {
     ])
   })
 
-  it("builds both images with a local Canopy.js build context", async () => {
+  it("builds both Canopy images with a local Canopy.js build context", async () => {
     const checkout = join(cwd, "platform checkout")
     const library = join(cwd, "Canopy.js")
     const dockerfiles = join(checkout, "deploy", "docker")
     mkdirSync(dockerfiles, { recursive: true })
     mkdirSync(join(library, "src"), { recursive: true })
-    for (const name of ["canopy", "canopy-studio"])
-      writeFileSync(join(dockerfiles, `${name}.Dockerfile`), "")
+    for (const file of ["canopy.Dockerfile", "canopyd.Dockerfile"])
+      writeFileSync(join(dockerfiles, file), "")
     writeFileSync(join(library, "src", "tsconfig.json"), "")
     writeFileSync(join(library, "bun.lock"), "")
     expect(await cli(["up", "--build", "platform checkout"])).toBe(0)
+    const env = {
+      CANOPY_IMAGE: "canopy-stack-server:local",
+      CANOPY_GATEWAY_IMAGE: "canopy-stack-gateway:local",
+    }
     const build = (file: string, image: string) => ({
       file: "docker",
       args: [
@@ -208,15 +217,11 @@ describe("canopy-stack", () => {
         checkout,
       ],
     })
-    const env = {
-      CANOPY_IMAGE: "canopy-stack-server:local",
-      CANOPY_STUDIO_IMAGE: "canopy-stack-studio:local",
-    }
     expect(run.mock.calls).toEqual([
       [info, { cwd: folder, env: {}, output: "quiet", timeoutMs: 10_000 }],
       [build("canopy.Dockerfile", env.CANOPY_IMAGE), { cwd: folder, env: {}, output: "inherit" }],
       [
-        build("canopy-studio.Dockerfile", env.CANOPY_STUDIO_IMAGE),
+        build("canopyd.Dockerfile", env.CANOPY_GATEWAY_IMAGE),
         { cwd: folder, env: {}, output: "inherit" },
       ],
       [compose("up", "--wait"), { cwd: folder, env, output: "inherit" }],

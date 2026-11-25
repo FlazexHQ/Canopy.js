@@ -91,7 +91,7 @@ interface CliOptions {
 }
 
 const serverImage = "canopy-stack-server:local"
-const studioImage = "canopy-stack-studio:local"
+const gatewayImage = "canopy-stack-gateway:local"
 
 export async function runCli(argv: readonly string[], options: CliOptions): Promise<number> {
   const { cwd, stdout, stderr, version } = options
@@ -167,8 +167,8 @@ export async function runCli(argv: readonly string[], options: CliOptions): Prom
               : resolve(cwd, command.library)
           const dockerfiles = join(checkout, "deploy", "docker")
           const server = join(dockerfiles, "canopy.Dockerfile")
-          const studio = join(dockerfiles, "canopy-studio.Dockerfile")
-          if (!existsSync(server) || !existsSync(studio))
+          const gateway = join(dockerfiles, "canopyd.Dockerfile")
+          if (!existsSync(server) || !existsSync(gateway))
             throw new Error(`Canopy Dockerfiles were not found in ${dockerfiles}.`)
           if (
             !existsSync(join(library, "src", "tsconfig.json")) ||
@@ -179,7 +179,7 @@ export async function runCli(argv: readonly string[], options: CliOptions): Prom
             )
           for (const [file, image] of [
             [server, serverImage],
-            [studio, studioImage],
+            [gateway, gatewayImage],
           ] as const) {
             const build = await docker([
               "build",
@@ -194,7 +194,7 @@ export async function runCli(argv: readonly string[], options: CliOptions): Prom
             if (build.code !== 0) return build.code
           }
           env["CANOPY_IMAGE"] = serverImage
-          env["CANOPY_STUDIO_IMAGE"] = studioImage
+          env["CANOPY_GATEWAY_IMAGE"] = gatewayImage
         }
 
         const result = await compose(["up", "--wait"])

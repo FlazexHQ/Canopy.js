@@ -15,6 +15,11 @@
 }
 
 {$CANOPY_SITE::8080} {
+	@internal path /internal /internal/*
+	handle @internal {
+		respond "Not found" 404
+	}
+
 	@realtime path /realtime/v1 /realtime/v1/*
 	handle @realtime {
 		reverse_proxy realtime:8080 {

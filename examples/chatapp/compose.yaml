@@ -9,7 +9,7 @@ x-canopy: &canopy
     dockerfile: deploy/docker/canopy.Dockerfile
     additional_contexts:
       canopyjs: ../..
-  image: canopy:dev
+  image: canopy-legacy:dev
   restart: unless-stopped
   depends_on:
     database:
@@ -74,19 +74,15 @@ services:
   studio:
     build:
       context: ../../../Canopy
-      dockerfile: deploy/docker/canopy-studio.Dockerfile
+      dockerfile: deploy/docker/canopyd.Dockerfile
       additional_contexts:
         canopyjs: ../..
-    image: canopy-studio:dev
+    image: canopy:dev
+    environment:
+      CANOPY_ROLE: studio
     restart: unless-stopped
     healthcheck:
-      test:
-        [
-          "CMD",
-          "bun",
-          "-e",
-          "process.exit((await fetch('http://localhost:8080/healthz')).ok ? 0 : 1)",
-        ]
+      test: ["CMD", "/usr/local/bin/canopyd", "--probe"]
       interval: 10s
       timeout: 5s
       retries: 6

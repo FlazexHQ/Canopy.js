@@ -1,7 +1,7 @@
 name: canopy-__CANOPY_PROJECT__
 
 x-canopy-image: &canopy-image
-  image: ${CANOPY_IMAGE:-ghcr.io/flazexhq/canopy:${CANOPY_VERSION:-__CANOPY_VERSION__}}
+  image: ${CANOPY_IMAGE:-ghcr.io/flazexhq/canopy-legacy:${CANOPY_VERSION:-__CANOPY_VERSION__}}
 
 x-canopy-environment: &canopy-environment
   MONGODB_URI: mongodb://database:27017/?replicaSet=rs0
@@ -90,18 +90,16 @@ services:
     healthcheck: *canopy-health
 
   studio:
-    image: ${CANOPY_STUDIO_IMAGE:-ghcr.io/flazexhq/canopy-studio:${CANOPY_VERSION:-__CANOPY_VERSION__}}
+    image: ${CANOPY_GATEWAY_IMAGE:-ghcr.io/flazexhq/canopy:${CANOPY_VERSION:-__CANOPY_VERSION__}}
+    environment:
+      CANOPY_ROLE: studio
     restart: unless-stopped
     read_only: true
     tmpfs: [/tmp]
     cap_drop: [ALL]
     security_opt: ["no-new-privileges:true"]
     healthcheck:
-      test:
-        - CMD
-        - bun
-        - -e
-        - "const r = await fetch('http://127.0.0.1:8080/healthz'); process.exit(r.ok ? 0 : 1)"
+      test: ["CMD", "/usr/local/bin/canopyd", "--probe"]
       interval: 10s
       timeout: 5s
       retries: 6
