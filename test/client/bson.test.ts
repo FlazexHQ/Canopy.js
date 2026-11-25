@@ -19,8 +19,20 @@ import {
 import fc from "fast-check"
 import { describe, expect, it } from "vitest"
 
-import { decodeDocuments, encodeDocument } from "../../src/client/bson.ts"
+import { decodeDocuments, encodeDocument, encodeDocumentBatch } from "../../src/client/bson.ts"
 import { bsonToEjson, ejsonToBson } from "../../src/core/wasm/client/canopy_client_js.js"
+
+it("encodes a growing batch when a getter also encodes a document", () => {
+  const text = "🦉".repeat(600)
+  const doc = {
+    get text() {
+      expect(decodeDocuments(encodeDocument({ nested: true }))).toEqual([{ nested: true }])
+      return text
+    },
+  }
+  const batch = encodeDocumentBatch([{ count: 1 }, doc, { empty: null }])
+  expect(decodeDocuments(batch)).toEqual([{ count: 1 }, { text }, { empty: null }])
+})
 
 const matcher = join(
   process.env["CANOPY_REPO"] ?? fileURLToPath(new URL("../../../Canopy", import.meta.url)),

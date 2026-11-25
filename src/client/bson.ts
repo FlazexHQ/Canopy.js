@@ -27,6 +27,7 @@ const fromUtf8 = new TextDecoder("utf-8", { fatal: true })
 let buffer = new Uint8Array(1024)
 let view = new DataView(buffer.buffer)
 let at = 0
+let encoding = false
 
 const SLAB_SIZE = 65536
 let slab = new Uint8Array(SLAB_SIZE)
@@ -201,11 +202,11 @@ function regexOptions(flags: string): string {
 function writeFields(document: object, depth: number): void {
   const start = at
   writeInt32(0)
-  const record = document as Record<string, unknown>
-  const keys = Object.keys(record)
+  const fields = document as Record<string, unknown>
+  const keys = Object.keys(fields)
   for (let index = 0; index < keys.length; index += 1) {
     const key = keys[index] as string
-    const item = record[key]
+    const item = fields[key]
     if (item !== undefined) writeElement(key, item, depth)
   }
   writeByte(0)
@@ -285,8 +286,44 @@ function writeTagged(value: object): number {
  * that has no BSON form.
  */
 export function encodeDocument(document: Document): Uint8Array {
+  return encode(document, true)
+}
+
+/** Encodes consecutive documents into scratch space, valid until the next encoding starts. */
+export function encodeDocumentBatch(documents: readonly Document[]): Uint8Array {
+  return encode(documents, false)
+}
+
+function encode(input: Document | readonly Document[], owned: boolean): Uint8Array {
+  if (encoding) {
+    const previous = buffer
+    const previousView = view
+    const position = at
+    buffer = new Uint8Array(1024)
+    view = new DataView(buffer.buffer)
+    try {
+      return writeInput(input, owned)
+    } finally {
+      buffer = previous
+      view = previousView
+      at = position
+    }
+  }
+  encoding = true
+  try {
+    return writeInput(input, owned)
+  } finally {
+    encoding = false
+  }
+}
+
+function writeInput(input: Document | readonly Document[], owned: boolean): Uint8Array {
   at = 0
-  writeFields(document, 0)
+  if (owned) writeFields(input, 0)
+  else {
+    for (const document of input as readonly Document[]) writeFields(document, 0)
+    return buffer.subarray(0, at)
+  }
   if (at > SLAB_SIZE / 4) return buffer.slice(0, at)
   if (slabUsed + at > SLAB_SIZE) {
     slab = new Uint8Array(SLAB_SIZE)

@@ -4,7 +4,7 @@ import {
   InvalidQueryError,
   isDocument,
 } from "../core/protocol/index.ts"
-import { decodeDocuments, encodeDocument } from "./bson.ts"
+import { decodeDocuments, encodeDocument, encodeDocumentBatch } from "./bson.ts"
 
 /**
  * Raised for a valid MongoDB query construct that the client core does not evaluate in process. A live
@@ -33,8 +33,8 @@ export interface DocumentFilter {
 }
 
 /**
- * The Rust client core, as the client uses it. Documents cross the boundary as BSON, each encoded once and
- * reused until it changes (the store replaces a document object whenever its content changes).
+ * The Rust client core, as the client uses it. Documents cross the boundary as BSON. A retained document
+ * keeps its slot until its object is collected. The store replaces the object when its content changes.
  */
 export interface Engine {
   /** `wasm` when the WebAssembly build runs, `js` for its JavaScript translation. */
@@ -209,7 +209,9 @@ interface Retained {
  */
 function retainedDocuments(client: ClientBinding): Retained {
   if (typeof FinalizationRegistry !== "function")
-    return { decide: (compiled, documents) => compiled.matchConcatenated(bsonOfAll(documents)) }
+    return {
+      decide: (compiled, documents) => compiled.matchConcatenated(encodeDocumentBatch(documents)),
+    }
   const cache = new client.DocumentCache()
   const slots = new WeakMap<object, number>()
   const seen = new WeakSet<object>()
@@ -255,33 +257,41 @@ function retainedDocuments(client: ClientBinding): Retained {
         }
       }
 
-      const found = new Uint32Array(count)
       const fresh: Document[] = []
       const retain: Document[] = []
       for (let index = 0; index < count; index += 1) {
         const doc = documents[index] as Document
         const slot = slots.get(doc)
-        if (slot !== undefined) found[index] = slot
-        else if (seen.has(doc)) retain.push(doc)
+        if (slot !== undefined) continue
+        if (seen.has(doc)) retain.push(doc)
         else fresh.push(doc)
       }
       if (retain.length > 0) {
-        const added = cache.retain(bsonOfAll(retain))
+        const added = cache.retain(encodeDocumentBatch(retain))
+        const redundant: number[] = []
         retain.forEach((doc, position) => {
-          const slot = added[position] ?? 0
+          const slot = added[position]
+          if (slot === undefined) return
+          if (slots.has(doc)) {
+            redundant.push(slot)
+            return
+          }
           slots.set(doc, slot)
           registry.register(doc, slot)
         })
+        if (redundant.length > 0) cache.release(Uint32Array.from(redundant))
       }
       if (fresh.length === 0) {
+        const found = new Uint32Array(count)
         for (let index = 0; index < count; index += 1) {
           const doc = documents[index] as Document
           found[index] = slots.get(doc) ?? 0
         }
         return cache.matchFilter(compiled, found)
       }
-      const direct = compiled.matchConcatenated(bsonOfAll(fresh))
+      const direct = compiled.matchConcatenated(encodeDocumentBatch(fresh))
       for (const doc of fresh) seen.add(doc)
+      if (fresh.length === count) return direct
       const kept: number[] = []
       const keptAt: number[] = []
       for (let index = 0; index < count; index += 1) {

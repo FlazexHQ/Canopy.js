@@ -300,6 +300,26 @@ describe("the client core", () => {
     filter.free()
   })
 
+  it("preserves order with new documents and repeated retained documents", async () => {
+    const engine = await loadEngine()
+    const filter = engine.compileFilter({ n: { $gt: 1 } })
+    const kept = { n: 2 }
+    const missed = { n: 1 }
+    try {
+      expect(filter.matchAll([kept, missed, kept])).toEqual([true, false, true])
+      expect(filter.matchAll([missed, { n: 3 }, kept, kept, { n: 0 }])).toEqual([
+        false,
+        true,
+        true,
+        true,
+        false,
+      ])
+      expect(filter.matchAll([kept, missed, kept])).toEqual([true, false, true])
+    } finally {
+      filter.free()
+    }
+  })
+
   it("translates refusals of the core into client errors", async () => {
     const engine = await loadEngine()
     expect(() => engine.compileFilter({ $where: "true" })).toThrow(InvalidQueryError)
