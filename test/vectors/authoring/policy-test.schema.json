@@ -1,0 +1,53 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Canopy policy test case v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "suite", "collection", "actor", "action", "expected"],
+  "properties": {
+    "version": { "const": 1 },
+    "suite": { "type": "string" },
+    "collection": { "type": "string", "pattern": "^[A-Za-z_][\\w.-]{0,119}$" },
+    "actor": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["label", "roles", "claims"],
+      "properties": {
+        "label": { "type": "string" },
+        "roles": { "type": "array", "items": { "type": "string" } },
+        "claims": { "type": ["object", "null"], "description": "Claims in canonical Extended JSON." },
+        "ctx": { "$ref": "#/$defs/document" }
+      }
+    },
+    "action": { "enum": ["read", "insert", "update", "delete"] },
+    "doc": { "$ref": "#/$defs/document" },
+    "filter": { "$ref": "#/$defs/document" },
+    "update": { "$ref": "#/$defs/document" },
+    "expected": { "type": "boolean" },
+    "withFields": { "$ref": "#/$defs/paths" },
+    "withoutFields": { "$ref": "#/$defs/paths" }
+  },
+  "oneOf": [
+    { "required": ["doc"] },
+    { "required": ["filter"] }
+  ],
+  "allOf": [
+    {
+      "if": { "properties": { "action": { "const": "insert" } } },
+      "then": { "required": ["doc"] }
+    },
+    {
+      "if": { "properties": { "action": { "const": "update" } } },
+      "then": { "required": ["update"] },
+      "else": { "not": { "required": ["update"] } }
+    },
+    {
+      "if": { "properties": { "action": { "const": "read" }, "expected": { "const": true } } },
+      "else": { "not": { "anyOf": [{ "required": ["withFields"] }, { "required": ["withoutFields"] }] } }
+    }
+  ],
+  "$defs": {
+    "document": { "type": "object", "description": "A document in canonical Extended JSON." },
+    "paths": { "type": "array", "items": { "type": "string" } }
+  }
+}

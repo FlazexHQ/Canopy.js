@@ -1,5 +1,5 @@
-import { binaryParts, bsonTypeTag } from "../../protocol/index.ts"
-import type { Shape } from "../shape.ts"
+import { binaryParts, bsonTypeTag } from "../core/protocol/index.ts"
+import type { Shape } from "./shape.ts"
 
 /** One problem Standard Schema validation found. */
 export interface StandardIssue {

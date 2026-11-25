@@ -1,0 +1,1638 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Canopy unresolved config",
+  "type": "object",
+  "properties": {
+    "version": {
+      "const": 1
+    },
+    "config": {
+      "type": "object",
+      "properties": {
+        "mongodb": {
+          "type": "object",
+          "properties": {
+            "uri": {
+              "$ref": "#/$defs/textSetting"
+            },
+            "database": {
+              "$ref": "#/$defs/textSetting"
+            },
+            "metaDatabase": {
+              "$ref": "#/$defs/textSetting"
+            },
+            "authDatabase": {
+              "$ref": "#/$defs/textSetting"
+            }
+          },
+          "additionalProperties": false
+        },
+        "environment": {
+          "anyOf": [
+            {
+              "enum": [
+                "development",
+                "production"
+              ]
+            },
+            {
+              "$ref": "#/$defs/env"
+            }
+          ]
+        },
+        "publicUrl": {
+          "$ref": "#/$defs/absoluteUrlSetting"
+        },
+        "masterKey": {
+          "$ref": "#/$defs/textSetting"
+        },
+        "previousMasterKeys": {
+          "$ref": "#/$defs/stringListSetting"
+        },
+        "auth": {
+          "anyOf": [
+            {
+              "type": "object",
+              "properties": {
+                "kind": {
+                  "const": "builtin"
+                },
+                "secret": {
+                  "$ref": "#/$defs/textSetting"
+                },
+                "appName": {
+                  "$ref": "#/$defs/textSetting"
+                },
+                "accessTokenTtl": {
+                  "$ref": "#/$defs/durationSetting"
+                },
+                "algorithm": {
+                  "anyOf": [
+                    {
+                      "enum": [
+                        "EdDSA",
+                        "ES256"
+                      ]
+                    },
+                    {
+                      "$ref": "#/$defs/env"
+                    }
+                  ]
+                },
+                "keyRotation": {
+                  "type": "object",
+                  "properties": {
+                    "interval": {
+                      "$ref": "#/$defs/durationSetting"
+                    },
+                    "grace": {
+                      "$ref": "#/$defs/durationSetting"
+                    }
+                  },
+                  "additionalProperties": false
+                },
+                "redirectUrls": {
+                  "$ref": "#/$defs/stringListSetting"
+                },
+                "emailPassword": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/$defs/boolean"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "minPasswordLength": {
+                          "$ref": "#/$defs/safeIntegerSetting"
+                        },
+                        "requireEmailVerification": {
+                          "$ref": "#/$defs/booleanSetting"
+                        }
+                      },
+                      "additionalProperties": false
+                    }
+                  ]
+                },
+                "magicLink": {
+                  "$ref": "#/$defs/booleanSetting"
+                },
+                "emailOtp": {
+                  "$ref": "#/$defs/booleanSetting"
+                },
+                "anonymous": {
+                  "$ref": "#/$defs/booleanSetting"
+                },
+                "twoFactor": {
+                  "$ref": "#/$defs/booleanSetting"
+                },
+                "passkeys": {
+                  "$ref": "#/$defs/booleanSetting"
+                },
+                "providers": {
+                  "type": "object",
+                  "properties": {
+                    "google": {
+                      "type": "object",
+                      "properties": {
+                        "clientId": {
+                          "$ref": "#/$defs/textSetting"
+                        },
+                        "clientSecret": {
+                          "$ref": "#/$defs/textSetting"
+                        }
+                      },
+                      "additionalProperties": false
+                    },
+                    "github": {
+                      "type": "object",
+                      "properties": {
+                        "clientId": {
+                          "$ref": "#/$defs/textSetting"
+                        },
+                        "clientSecret": {
+                          "$ref": "#/$defs/textSetting"
+                        }
+                      },
+                      "additionalProperties": false
+                    },
+                    "apple": {
+                      "type": "object",
+                      "properties": {
+                        "clientId": {
+                          "$ref": "#/$defs/textSetting"
+                        },
+                        "clientSecret": {
+                          "$ref": "#/$defs/textSetting"
+                        }
+                      },
+                      "additionalProperties": false
+                    },
+                    "microsoft": {
+                      "type": "object",
+                      "properties": {
+                        "clientId": {
+                          "$ref": "#/$defs/textSetting"
+                        },
+                        "clientSecret": {
+                          "$ref": "#/$defs/textSetting"
+                        },
+                        "tenantId": {
+                          "$ref": "#/$defs/textSetting"
+                        }
+                      },
+                      "additionalProperties": false
+                    },
+                    "discord": {
+                      "type": "object",
+                      "properties": {
+                        "clientId": {
+                          "$ref": "#/$defs/textSetting"
+                        },
+                        "clientSecret": {
+                          "$ref": "#/$defs/textSetting"
+                        }
+                      },
+                      "additionalProperties": false
+                    }
+                  },
+                  "additionalProperties": false
+                },
+                "oidc": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "$ref": "#/$defs/textSetting"
+                      },
+                      "discoveryUrl": {
+                        "$ref": "#/$defs/absoluteUrlSetting"
+                      },
+                      "clientId": {
+                        "$ref": "#/$defs/textSetting"
+                      },
+                      "clientSecret": {
+                        "$ref": "#/$defs/textSetting"
+                      },
+                      "scopes": {
+                        "$ref": "#/$defs/stringListSetting"
+                      }
+                    },
+                    "additionalProperties": false
+                  }
+                },
+                "claims": {
+                  "type": "object",
+                  "properties": {
+                    "url": {
+                      "type": "string",
+                      "pattern": "^https://[^/?#\\s]+"
+                    },
+                    "secret": {
+                      "$ref": "#/$defs/secret"
+                    }
+                  },
+                  "additionalProperties": false,
+                  "required": [
+                    "url",
+                    "secret"
+                  ]
+                },
+                "email": {
+                  "type": "object",
+                  "properties": {
+                    "from": {
+                      "$ref": "#/$defs/textSetting"
+                    },
+                    "transport": {
+                      "anyOf": [
+                        {
+                          "type": "object",
+                          "properties": {
+                            "kind": {
+                              "const": "smtp"
+                            },
+                            "host": {
+                              "$ref": "#/$defs/textSetting"
+                            },
+                            "port": {
+                              "$ref": "#/$defs/safeIntegerSetting"
+                            },
+                            "secure": {
+                              "$ref": "#/$defs/booleanSetting"
+                            },
+                            "requireTls": {
+                              "$ref": "#/$defs/booleanSetting"
+                            },
+                            "user": {
+                              "$ref": "#/$defs/textSetting"
+                            },
+                            "pass": {
+                              "$ref": "#/$defs/textSetting"
+                            }
+                          },
+                          "additionalProperties": false,
+                          "required": [
+                            "kind"
+                          ]
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "kind": {
+                              "const": "resend"
+                            },
+                            "apiKey": {
+                              "$ref": "#/$defs/textSetting"
+                            }
+                          },
+                          "additionalProperties": false,
+                          "required": [
+                            "kind"
+                          ]
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "kind": {
+                              "const": "postmark"
+                            },
+                            "serverToken": {
+                              "$ref": "#/$defs/textSetting"
+                            },
+                            "messageStream": {
+                              "$ref": "#/$defs/textSetting"
+                            }
+                          },
+                          "additionalProperties": false,
+                          "required": [
+                            "kind"
+                          ]
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "kind": {
+                              "const": "ses"
+                            },
+                            "region": {
+                              "$ref": "#/$defs/textSetting"
+                            },
+                            "accessKeyId": {
+                              "$ref": "#/$defs/textSetting"
+                            },
+                            "secretAccessKey": {
+                              "$ref": "#/$defs/textSetting"
+                            },
+                            "sessionToken": {
+                              "$ref": "#/$defs/textSetting"
+                            }
+                          },
+                          "additionalProperties": false,
+                          "required": [
+                            "kind"
+                          ]
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "kind": {
+                              "const": "log"
+                            }
+                          },
+                          "additionalProperties": false,
+                          "required": [
+                            "kind"
+                          ]
+                        }
+                      ]
+                    }
+                  },
+                  "additionalProperties": false
+                },
+                "trustedProxies": {
+                  "$ref": "#/$defs/stringListSetting"
+                },
+                "identifierLimit": {
+                  "type": "object",
+                  "properties": {
+                    "max": {
+                      "$ref": "#/$defs/safeIntegerSetting"
+                    },
+                    "window": {
+                      "$ref": "#/$defs/durationSetting"
+                    }
+                  },
+                  "additionalProperties": false
+                },
+                "session": {
+                  "type": "object",
+                  "properties": {
+                    "expiresIn": {
+                      "$ref": "#/$defs/durationSetting"
+                    },
+                    "updateAge": {
+                      "$ref": "#/$defs/durationSetting"
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              },
+              "additionalProperties": false,
+              "required": [
+                "kind"
+              ]
+            },
+            {
+              "type": "object",
+              "properties": {
+                "kind": {
+                  "const": "external"
+                },
+                "jwksUrl": {
+                  "$ref": "#/$defs/absoluteUrlSetting"
+                },
+                "jwks": {
+                  "$ref": "#/$defs/raw"
+                },
+                "issuer": {
+                  "$ref": "#/$defs/textSetting"
+                },
+                "audience": {
+                  "$ref": "#/$defs/textSetting"
+                },
+                "algorithms": {
+                  "$ref": "#/$defs/stringListSetting"
+                },
+                "rolesClaim": {
+                  "$ref": "#/$defs/textSetting"
+                },
+                "allowServiceRoleFromJwt": {
+                  "$ref": "#/$defs/booleanSetting"
+                },
+                "clockToleranceSeconds": {
+                  "$ref": "#/$defs/safeIntegerSetting"
+                }
+              },
+              "additionalProperties": false,
+              "required": [
+                "kind"
+              ]
+            },
+            {
+              "type": "object",
+              "properties": {
+                "kind": {
+                  "const": "auth0"
+                },
+                "domain": {
+                  "$ref": "#/$defs/textSetting"
+                },
+                "audience": {
+                  "$ref": "#/$defs/textSetting"
+                },
+                "rolesClaim": {
+                  "$ref": "#/$defs/textSetting"
+                }
+              },
+              "additionalProperties": false,
+              "required": [
+                "kind"
+              ]
+            },
+            {
+              "type": "object",
+              "properties": {
+                "kind": {
+                  "const": "clerk"
+                },
+                "frontendApi": {
+                  "$ref": "#/$defs/textSetting"
+                },
+                "audience": {
+                  "$ref": "#/$defs/textSetting"
+                },
+                "rolesClaim": {
+                  "$ref": "#/$defs/textSetting"
+                }
+              },
+              "additionalProperties": false,
+              "required": [
+                "kind"
+              ]
+            },
+            {
+              "type": "object",
+              "properties": {
+                "kind": {
+                  "const": "firebase"
+                },
+                "projectId": {
+                  "$ref": "#/$defs/textSetting"
+                },
+                "rolesClaim": {
+                  "$ref": "#/$defs/textSetting"
+                }
+              },
+              "additionalProperties": false,
+              "required": [
+                "kind"
+              ]
+            },
+            {
+              "type": "object",
+              "properties": {
+                "kind": {
+                  "const": "supabase"
+                },
+                "projectRef": {
+                  "$ref": "#/$defs/textSetting"
+                },
+                "rolesClaim": {
+                  "$ref": "#/$defs/textSetting"
+                }
+              },
+              "additionalProperties": false,
+              "required": [
+                "kind"
+              ]
+            }
+          ]
+        },
+        "keys": {
+          "type": "object",
+          "properties": {
+            "publishable": {
+              "$ref": "#/$defs/stringListSetting"
+            },
+            "secret": {
+              "$ref": "#/$defs/stringListSetting"
+            }
+          },
+          "additionalProperties": false
+        },
+        "policies": {
+          "anyOf": [
+            {
+              "type": "object",
+              "properties": {
+                "dir": {
+                  "$ref": "#/$defs/textSetting"
+                },
+                "watch": {
+                  "$ref": "#/$defs/booleanSetting"
+                }
+              },
+              "additionalProperties": false,
+              "required": [
+                "dir"
+              ]
+            },
+            {
+              "type": "object",
+              "properties": {
+                "source": {
+                  "anyOf": [
+                    {
+                      "const": "database"
+                    },
+                    {
+                      "$ref": "#/$defs/env"
+                    }
+                  ]
+                },
+                "watch": {
+                  "$ref": "#/$defs/booleanSetting"
+                }
+              },
+              "additionalProperties": false,
+              "required": [
+                "source"
+              ]
+            }
+          ]
+        },
+        "rest": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/boolean"
+            },
+            {
+              "type": "object",
+              "properties": {
+                "defaultLimit": {
+                  "$ref": "#/$defs/safeIntegerSetting"
+                },
+                "maxLimit": {
+                  "$ref": "#/$defs/safeIntegerSetting"
+                },
+                "maxBodyBytes": {
+                  "$ref": "#/$defs/safeIntegerSetting"
+                },
+                "mutationTtl": {
+                  "$ref": "#/$defs/durationSetting"
+                }
+              },
+              "additionalProperties": false
+            }
+          ]
+        },
+        "realtime": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/boolean"
+            },
+            {
+              "type": "object",
+              "properties": {
+                "fullDocument": {
+                  "anyOf": [
+                    {
+                      "enum": [
+                        "auto",
+                        "updateLookup",
+                        "images"
+                      ]
+                    },
+                    {
+                      "$ref": "#/$defs/env"
+                    }
+                  ]
+                },
+                "transports": {
+                  "anyOf": [
+                    {
+                      "type": "array",
+                      "items": {
+                        "enum": [
+                          "websocket",
+                          "sse",
+                          "long-poll"
+                        ]
+                      }
+                    },
+                    {
+                      "$ref": "#/$defs/env"
+                    }
+                  ]
+                },
+                "resumeWindow": {
+                  "$ref": "#/$defs/durationSetting"
+                },
+                "checkpoints": {
+                  "anyOf": [
+                    {
+                      "enum": [
+                        "meta",
+                        "off"
+                      ]
+                    },
+                    {
+                      "$ref": "#/$defs/env"
+                    }
+                  ]
+                },
+                "drainWindow": {
+                  "$ref": "#/$defs/durationSetting"
+                },
+                "echoTimeout": {
+                  "$ref": "#/$defs/durationSetting"
+                },
+                "server": {
+                  "anyOf": [
+                    {
+                      "enum": [
+                        "ts",
+                        "gateway",
+                        "auto"
+                      ]
+                    },
+                    {
+                      "$ref": "#/$defs/env"
+                    }
+                  ]
+                }
+              },
+              "additionalProperties": false
+            }
+          ]
+        },
+        "graphql": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/boolean"
+            },
+            {
+              "type": "object",
+              "properties": {
+                "maxDepth": {
+                  "$ref": "#/$defs/safeIntegerSetting"
+                },
+                "maxComplexity": {
+                  "$ref": "#/$defs/safeIntegerSetting"
+                },
+                "maxAliases": {
+                  "$ref": "#/$defs/safeIntegerSetting"
+                },
+                "maxBatch": {
+                  "$ref": "#/$defs/safeIntegerSetting"
+                },
+                "introspection": {
+                  "anyOf": [
+                    {
+                      "enum": [
+                        "always",
+                        "authenticated",
+                        "never"
+                      ]
+                    },
+                    {
+                      "$ref": "#/$defs/env"
+                    }
+                  ]
+                },
+                "persisted": {
+                  "type": "object",
+                  "properties": {
+                    "file": {
+                      "$ref": "#/$defs/textSetting"
+                    },
+                    "only": {
+                      "$ref": "#/$defs/booleanSetting"
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              },
+              "additionalProperties": false
+            }
+          ]
+        },
+        "rateLimits": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/boolean"
+            },
+            {
+              "type": "object",
+              "properties": {
+                "enabled": {
+                  "$ref": "#/$defs/booleanSetting"
+                },
+                "requests": {
+                  "type": "object",
+                  "properties": {
+                    "perSecond": {
+                      "$ref": "#/$defs/safeIntegerSetting"
+                    },
+                    "burst": {
+                      "$ref": "#/$defs/safeIntegerSetting"
+                    }
+                  },
+                  "additionalProperties": false
+                },
+                "messages": {
+                  "type": "object",
+                  "properties": {
+                    "perSecond": {
+                      "$ref": "#/$defs/safeIntegerSetting"
+                    },
+                    "burst": {
+                      "$ref": "#/$defs/safeIntegerSetting"
+                    }
+                  },
+                  "additionalProperties": false
+                },
+                "anonymousConnectionsPerAddress": {
+                  "$ref": "#/$defs/safeIntegerSetting"
+                },
+                "failedAuthentications": {
+                  "type": "object",
+                  "properties": {
+                    "perSecond": {
+                      "$ref": "#/$defs/safeIntegerSetting"
+                    },
+                    "burst": {
+                      "$ref": "#/$defs/safeIntegerSetting"
+                    }
+                  },
+                  "additionalProperties": false
+                },
+                "exemptService": {
+                  "$ref": "#/$defs/booleanSetting"
+                }
+              },
+              "additionalProperties": false
+            }
+          ]
+        },
+        "collections": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "object",
+            "properties": {
+              "idType": {
+                "anyOf": [
+                  {
+                    "enum": [
+                      "auto",
+                      "objectId",
+                      "string",
+                      "uuid",
+                      "number"
+                    ]
+                  },
+                  {
+                    "$ref": "#/$defs/env"
+                  }
+                ]
+              },
+              "typeName": {
+                "$ref": "#/$defs/textSetting"
+              },
+              "relations": {
+                "type": "object",
+                "additionalProperties": {
+                  "type": "object",
+                  "properties": {
+                    "to": {
+                      "$ref": "#/$defs/textSetting"
+                    },
+                    "local": {
+                      "$ref": "#/$defs/textSetting"
+                    },
+                    "foreign": {
+                      "$ref": "#/$defs/textSetting"
+                    },
+                    "many": {
+                      "$ref": "#/$defs/booleanSetting"
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              },
+              "search": {
+                "$ref": "#/$defs/booleanSetting"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "cors": {
+          "type": "object",
+          "properties": {
+            "origins": {
+              "anyOf": [
+                {
+                  "anyOf": [
+                    {
+                      "const": "*"
+                    },
+                    {
+                      "$ref": "#/$defs/stringList"
+                    }
+                  ]
+                },
+                {
+                  "$ref": "#/$defs/env"
+                }
+              ]
+            }
+          },
+          "additionalProperties": false
+        },
+        "audit": {
+          "type": "object",
+          "properties": {
+            "dataWrites": {
+              "$ref": "#/$defs/booleanSetting"
+            }
+          },
+          "additionalProperties": false
+        },
+        "storage": {
+          "type": "object",
+          "properties": {
+            "backend": {
+              "anyOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "kind": {
+                      "const": "local"
+                    },
+                    "root": {
+                      "$ref": "#/$defs/textSetting"
+                    }
+                  },
+                  "additionalProperties": false,
+                  "required": [
+                    "kind"
+                  ]
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "kind": {
+                      "const": "r2"
+                    },
+                    "accountId": {
+                      "$ref": "#/$defs/textSetting"
+                    },
+                    "bucket": {
+                      "$ref": "#/$defs/textSetting"
+                    },
+                    "accessKeyId": {
+                      "$ref": "#/$defs/textSetting"
+                    },
+                    "secretAccessKey": {
+                      "$ref": "#/$defs/textSetting"
+                    },
+                    "jurisdiction": {
+                      "$ref": "#/$defs/textSetting"
+                    },
+                    "prefix": {
+                      "$ref": "#/$defs/textSetting"
+                    }
+                  },
+                  "additionalProperties": false,
+                  "required": [
+                    "kind"
+                  ]
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "kind": {
+                      "const": "s3"
+                    },
+                    "endpoint": {
+                      "$ref": "#/$defs/absoluteUrlSetting"
+                    },
+                    "region": {
+                      "$ref": "#/$defs/textSetting"
+                    },
+                    "bucket": {
+                      "$ref": "#/$defs/textSetting"
+                    },
+                    "accessKeyId": {
+                      "$ref": "#/$defs/textSetting"
+                    },
+                    "secretAccessKey": {
+                      "$ref": "#/$defs/textSetting"
+                    },
+                    "sessionToken": {
+                      "$ref": "#/$defs/textSetting"
+                    },
+                    "forcePathStyle": {
+                      "$ref": "#/$defs/booleanSetting"
+                    },
+                    "prefix": {
+                      "$ref": "#/$defs/textSetting"
+                    }
+                  },
+                  "additionalProperties": false,
+                  "required": [
+                    "kind"
+                  ]
+                }
+              ]
+            },
+            "maxFileSize": {
+              "$ref": "#/$defs/safeIntegerSetting"
+            },
+            "maxUploadSize": {
+              "$ref": "#/$defs/safeIntegerSetting"
+            },
+            "images": {
+              "type": "object",
+              "properties": {
+                "enabled": {
+                  "$ref": "#/$defs/booleanSetting"
+                },
+                "maxDimension": {
+                  "$ref": "#/$defs/safeIntegerSetting"
+                },
+                "maxSourceSize": {
+                  "$ref": "#/$defs/safeIntegerSetting"
+                }
+              },
+              "additionalProperties": false
+            },
+            "buckets": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "object",
+                "properties": {
+                  "public": {
+                    "$ref": "#/$defs/booleanSetting"
+                  },
+                  "maxFileSize": {
+                    "$ref": "#/$defs/safeIntegerSetting"
+                  },
+                  "allowedTypes": {
+                    "$ref": "#/$defs/stringListSetting"
+                  }
+                },
+                "additionalProperties": false
+              }
+            }
+          },
+          "additionalProperties": false
+        },
+        "webhooks": {
+          "type": "object",
+          "properties": {
+            "secret": {
+              "$ref": "#/$defs/textSetting"
+            },
+            "maxAttempts": {
+              "$ref": "#/$defs/safeIntegerSetting"
+            },
+            "timeout": {
+              "$ref": "#/$defs/durationSetting"
+            },
+            "triggers": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "object",
+                "properties": {
+                  "collection": {
+                    "$ref": "#/$defs/textSetting"
+                  },
+                  "operations": {
+                    "anyOf": [
+                      {
+                        "type": "array",
+                        "items": {
+                          "enum": [
+                            "insert",
+                            "update",
+                            "replace",
+                            "delete"
+                          ]
+                        }
+                      },
+                      {
+                        "$ref": "#/$defs/env"
+                      }
+                    ]
+                  },
+                  "filter": {
+                    "$ref": "#/$defs/raw"
+                  },
+                  "url": {
+                    "$ref": "#/$defs/absoluteUrlSetting"
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "schedules": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "object",
+                "properties": {
+                  "cron": {
+                    "$ref": "#/$defs/textSetting"
+                  },
+                  "url": {
+                    "$ref": "#/$defs/absoluteUrlSetting"
+                  },
+                  "body": {
+                    "$ref": "#/$defs/raw"
+                  }
+                },
+                "additionalProperties": false
+              }
+            }
+          },
+          "additionalProperties": false
+        },
+        "telemetry": {
+          "type": "object",
+          "properties": {
+            "tracing": {
+              "$ref": "#/$defs/booleanSetting"
+            }
+          },
+          "additionalProperties": false
+        },
+        "server": {
+          "type": "object",
+          "properties": {
+            "port": {
+              "$ref": "#/$defs/safeIntegerSetting"
+            },
+            "metricsPort": {
+              "$ref": "#/$defs/safeIntegerSetting"
+            },
+            "metricsHost": {
+              "$ref": "#/$defs/textSetting"
+            },
+            "metricsToken": {
+              "$ref": "#/$defs/textSetting"
+            },
+            "adminListen": {
+              "$ref": "#/$defs/textSetting"
+            },
+            "nodeId": {
+              "$ref": "#/$defs/textSetting"
+            },
+            "trustedProxies": {
+              "$ref": "#/$defs/stringListSetting"
+            },
+            "engine": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "auto",
+                    "ts",
+                    "native",
+                    "wasm"
+                  ]
+                },
+                {
+                  "$ref": "#/$defs/env"
+                }
+              ]
+            }
+          },
+          "additionalProperties": false
+        },
+        "log": {
+          "type": "object",
+          "properties": {
+            "level": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "debug",
+                    "info",
+                    "warn",
+                    "error"
+                  ]
+                },
+                {
+                  "$ref": "#/$defs/env"
+                }
+              ]
+            }
+          },
+          "additionalProperties": false
+        },
+        "types": {
+          "type": "object",
+          "properties": {
+            "out": {
+              "$ref": "#/$defs/textSetting"
+            },
+            "role": {
+              "$ref": "#/$defs/textSetting"
+            }
+          },
+          "additionalProperties": false
+        },
+        "dev": {
+          "type": "object",
+          "properties": {
+            "insecure": {
+              "$ref": "#/$defs/booleanSetting"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "version",
+    "config"
+  ],
+  "$defs": {
+    "env": {
+      "anyOf": [
+        {
+          "type": "object",
+          "properties": {
+            "$env": {
+              "type": "object",
+              "properties": {
+                "name": {
+                  "type": "string",
+                  "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"
+                },
+                "secret": {
+                  "const": true
+                },
+                "optional": {
+                  "$ref": "#/$defs/boolean"
+                },
+                "type": {
+                  "const": "string"
+                }
+              },
+              "additionalProperties": false,
+              "required": [
+                "name",
+                "type",
+                "secret",
+                "optional"
+              ]
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "$env"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "$env": {
+              "type": "object",
+              "properties": {
+                "name": {
+                  "type": "string",
+                  "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"
+                },
+                "secret": {
+                  "const": false
+                },
+                "optional": {
+                  "$ref": "#/$defs/boolean"
+                },
+                "type": {
+                  "const": "string"
+                },
+                "default": {
+                  "$ref": "#/$defs/text"
+                }
+              },
+              "additionalProperties": false,
+              "required": [
+                "name",
+                "type",
+                "secret",
+                "optional"
+              ],
+              "if": {
+                "properties": {
+                  "optional": {
+                    "const": true
+                  }
+                }
+              },
+              "then": {
+                "not": {
+                  "required": [
+                    "default"
+                  ]
+                }
+              }
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "$env"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "$env": {
+              "type": "object",
+              "properties": {
+                "name": {
+                  "type": "string",
+                  "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"
+                },
+                "secret": {
+                  "const": false
+                },
+                "optional": {
+                  "$ref": "#/$defs/boolean"
+                },
+                "type": {
+                  "const": "int"
+                },
+                "default": {
+                  "$ref": "#/$defs/safeInteger"
+                }
+              },
+              "additionalProperties": false,
+              "required": [
+                "name",
+                "type",
+                "secret",
+                "optional"
+              ],
+              "if": {
+                "properties": {
+                  "optional": {
+                    "const": true
+                  }
+                }
+              },
+              "then": {
+                "not": {
+                  "required": [
+                    "default"
+                  ]
+                }
+              }
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "$env"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "$env": {
+              "type": "object",
+              "properties": {
+                "name": {
+                  "type": "string",
+                  "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"
+                },
+                "secret": {
+                  "const": false
+                },
+                "optional": {
+                  "$ref": "#/$defs/boolean"
+                },
+                "type": {
+                  "const": "bool"
+                },
+                "default": {
+                  "$ref": "#/$defs/boolean"
+                }
+              },
+              "additionalProperties": false,
+              "required": [
+                "name",
+                "type",
+                "secret",
+                "optional"
+              ],
+              "if": {
+                "properties": {
+                  "optional": {
+                    "const": true
+                  }
+                }
+              },
+              "then": {
+                "not": {
+                  "required": [
+                    "default"
+                  ]
+                }
+              }
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "$env"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "$env": {
+              "type": "object",
+              "properties": {
+                "name": {
+                  "type": "string",
+                  "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"
+                },
+                "secret": {
+                  "const": false
+                },
+                "optional": {
+                  "$ref": "#/$defs/boolean"
+                },
+                "type": {
+                  "const": "list"
+                },
+                "default": {
+                  "$ref": "#/$defs/stringList"
+                }
+              },
+              "additionalProperties": false,
+              "required": [
+                "name",
+                "type",
+                "secret",
+                "optional"
+              ],
+              "if": {
+                "properties": {
+                  "optional": {
+                    "const": true
+                  }
+                }
+              },
+              "then": {
+                "not": {
+                  "required": [
+                    "default"
+                  ]
+                }
+              }
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "$env"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "$env": {
+              "type": "object",
+              "properties": {
+                "name": {
+                  "type": "string",
+                  "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"
+                },
+                "secret": {
+                  "const": false
+                },
+                "optional": {
+                  "$ref": "#/$defs/boolean"
+                },
+                "type": {
+                  "const": "url"
+                },
+                "default": {
+                  "$ref": "#/$defs/absoluteUrl"
+                }
+              },
+              "additionalProperties": false,
+              "required": [
+                "name",
+                "type",
+                "secret",
+                "optional"
+              ],
+              "if": {
+                "properties": {
+                  "optional": {
+                    "const": true
+                  }
+                }
+              },
+              "then": {
+                "not": {
+                  "required": [
+                    "default"
+                  ]
+                }
+              }
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "$env"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "$env": {
+              "type": "object",
+              "properties": {
+                "name": {
+                  "type": "string",
+                  "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"
+                },
+                "secret": {
+                  "const": false
+                },
+                "optional": {
+                  "$ref": "#/$defs/boolean"
+                },
+                "type": {
+                  "const": "duration"
+                },
+                "default": {
+                  "type": "number",
+                  "minimum": 0
+                }
+              },
+              "additionalProperties": false,
+              "required": [
+                "name",
+                "type",
+                "secret",
+                "optional"
+              ],
+              "if": {
+                "properties": {
+                  "optional": {
+                    "const": true
+                  }
+                }
+              },
+              "then": {
+                "not": {
+                  "required": [
+                    "default"
+                  ]
+                }
+              }
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "$env"
+          ]
+        }
+      ]
+    },
+    "secret": {
+      "type": "object",
+      "properties": {
+        "$env": {
+          "type": "object",
+          "properties": {
+            "name": {
+              "type": "string",
+              "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"
+            },
+            "secret": {
+              "const": true
+            },
+            "optional": {
+              "const": false
+            },
+            "type": {
+              "const": "string"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "name",
+            "type",
+            "secret",
+            "optional"
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "$env"
+      ]
+    },
+    "raw": {
+      "type": "object",
+      "properties": {
+        "$ejson": {
+          "type": "object"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "$ejson"
+      ],
+      "description": "A document encoded as canonical Extended JSON with a literal document escape for keys beginning with a dollar sign."
+    },
+    "text": {
+      "type": "string"
+    },
+    "safeInteger": {
+      "type": "integer",
+      "minimum": -9007199254740991,
+      "maximum": 9007199254740991
+    },
+    "boolean": {
+      "type": "boolean"
+    },
+    "stringList": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/text"
+      }
+    },
+    "absoluteUrl": {
+      "type": "string",
+      "pattern": "^\\s*[A-Za-z][A-Za-z0-9+.-]*:"
+    },
+    "textSetting": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/text"
+        },
+        {
+          "$ref": "#/$defs/env"
+        }
+      ]
+    },
+    "safeIntegerSetting": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/safeInteger"
+        },
+        {
+          "$ref": "#/$defs/env"
+        }
+      ]
+    },
+    "booleanSetting": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/boolean"
+        },
+        {
+          "$ref": "#/$defs/env"
+        }
+      ]
+    },
+    "stringListSetting": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/stringList"
+        },
+        {
+          "$ref": "#/$defs/env"
+        }
+      ]
+    },
+    "absoluteUrlSetting": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/absoluteUrl"
+        },
+        {
+          "$ref": "#/$defs/env"
+        }
+      ]
+    },
+    "durationSetting": {
+      "anyOf": [
+        {
+          "anyOf": [
+            {
+              "type": "number",
+              "minimum": 0
+            },
+            {
+              "type": "string",
+              "pattern": "^\\s*(?:[0-9]+|[0-9]+(?:\\.[0-9]+)?(?:ms|s|m|h|d))\\s*$"
+            }
+          ]
+        },
+        {
+          "$ref": "#/$defs/env"
+        }
+      ]
+    }
+  }
+}

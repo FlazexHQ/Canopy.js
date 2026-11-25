@@ -67,6 +67,15 @@ export default defineConfig({
         },
       }),
       project("cli", "node", ["test/cli/**/*.test.ts"]),
+      defineProject({
+        resolve,
+        ssr,
+        test: {
+          name: "emit",
+          environment: "node",
+          include: ["test/emit/*.test.ts"],
+        },
+      }),
       project("react", "happy-dom", ["test/react/**/*.test.tsx"]),
       project("vue", "happy-dom", ["test/vue/**/*.test.ts"]),
       defineProject({

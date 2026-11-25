@@ -1,4 +1,4 @@
-import type { CollectionSchema } from "../shape.ts"
+import type { CollectionSchema } from "./shape.ts"
 import type { AnyCollectionDefinition, SchemaDefinition } from "./index.ts"
 
 /** A collection definition as the `CollectionSchema` that sampling diffs and `$jsonSchema` conversion read. */

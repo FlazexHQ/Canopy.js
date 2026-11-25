@@ -1,4 +1,4 @@
-import type { ObjectId } from "../../protocol/index.ts"
+import type { ObjectId } from "../core/protocol/index.ts"
 import type { Builder, Fields, InsertObjectOf, ObjectOf, TypeOf } from "./fields.ts"
 
 type Prettify<T> = { [K in keyof T]: T[K] } & {}

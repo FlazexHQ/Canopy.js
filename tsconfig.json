@@ -4,9 +4,11 @@
   "references": [
     { "path": "src" },
     { "path": "src/tsconfig.config.json" },
+    { "path": "src/tsconfig.emit.json" },
     { "path": "src/tsconfig.web.json" },
     { "path": "src/cli" },
     { "path": "test/cli" },
+    { "path": "test/emit" },
     { "path": "test/support" },
     { "path": "test/client" },
     { "path": "test/client/registered" },

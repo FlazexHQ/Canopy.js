@@ -12,12 +12,13 @@ import { dirname, join, relative, resolve, sep } from "node:path"
 import { fileURLToPath } from "node:url"
 
 /**
- * Vendors the Rust client core of Canopy, built to WebAssembly and to JavaScript (wasm2js), into
+ * Vendors the Rust core of Canopy, built to WebAssembly and to JavaScript (wasm2js), into
  * `src/core/wasm`, with a checksum manifest. The artifacts come from the split build of `packages/wasm` in
  * Canopy (`bun --filter @canopy/wasm build:native --split`), which writes them under `generated/`.
  *
  * The client module holds the matcher and the EJSON codec; the transforms module holds sorting,
- * projection and update application. The authoring module never ships with the client.
+ * projection and update application. The authoring module validates the canonical documents for
+ * `canopy.js/emit` and never loads from the client entry points.
  *
  * Usage:
  *   bun scripts/sync-wasm.ts                   copy from ../Canopy (or CANOPY_REPO, or --from <path>)
@@ -33,9 +34,16 @@ const WASM_DIR = join(ROOT, "src", "core", "wasm")
 const DIST_DIR = join(ROOT, "dist", "core", "wasm")
 const MANIFEST = join(WASM_DIR, "manifest.json")
 
-/** The vendored modules and the files of each, as `packages/wasm/generated/<module>/canopy_<module><suffix>`. */
-const MODULES = ["client", "transforms"] as const
-const SUFFIXES = [".js", ".d.ts", "_bg.wasm", "_js.js", "_js.d.ts", "_translated.js"] as const
+/**
+ * The vendored modules and the files of each, as `packages/wasm/generated/<module>/canopy_<module><suffix>`.
+ * The authoring module runs only under `canopy.js/emit` on Bun, Node and Deno, which all have WebAssembly,
+ * so its JavaScript translation is not vendored.
+ */
+const MODULES: Readonly<Record<string, readonly string[]>> = {
+  client: [".js", ".d.ts", "_bg.wasm", "_js.js", "_js.d.ts", "_translated.js"],
+  transforms: [".js", ".d.ts", "_bg.wasm", "_js.js", "_js.d.ts", "_translated.js"],
+  authoring: [".js", ".d.ts", "_bg.wasm"],
+}
 
 interface Options {
   readonly from: string
@@ -69,8 +77,8 @@ function parseArgs(argv: readonly string[]): Options {
 
 /** The vendored files, as paths relative to `src/core/wasm` with forward slashes. */
 function vendoredNames(): string[] {
-  return MODULES.flatMap((module) =>
-    SUFFIXES.map((suffix) => `${module}/canopy_${module}${suffix}`),
+  return Object.entries(MODULES).flatMap(([module, suffixes]) =>
+    suffixes.map((suffix) => `${module}/canopy_${module}${suffix}`),
   )
 }
 

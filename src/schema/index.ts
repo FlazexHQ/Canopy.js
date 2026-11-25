@@ -1,5 +1,6 @@
-import type { ObjectShape, Shape } from "../shape.ts"
-import { checkFields, type FieldBuilder, type Fields, idGenerator, objectShape } from "./fields.ts"
+import type { ObjectShape, Shape } from "./shape.ts"
+import { DECLARED } from "./declared.ts"
+import { type FieldBuilder, type Fields, idGenerator, objectShape } from "./fields.ts"
 import { type StandardProps, standardProps } from "./standard.ts"
 import type { CollectionTypesOf, DocOf } from "./types.ts"
 
@@ -92,35 +93,28 @@ function fillDefaults(fields: Fields, doc: Record<string, unknown>): Record<stri
   return out
 }
 
-function checkName(name: string): void {
-  if (
-    typeof name !== "string" ||
-    name === "" ||
-    name.includes("$") ||
-    name.includes("\0") ||
-    name.startsWith("system.")
-  )
-    throw new TypeError(`${JSON.stringify(name)} is not a valid collection name`)
-}
-
 /**
  * Declares a collection: `collection("todos", { title: t.string(), done: t.bool().default(false) })`. An
  * omitted `_id` is an ObjectId the client generates; `_id: t.uuid()` generates a UUIDv7, and any other `_id`
- * type must be supplied on insert unless its builder has `.generate()`.
+ * type must be supplied on insert unless its builder has `.generate()`. The definition is not validated
+ * here: `canopy.js/emit` checks field builders and generators, and the Rust authoring module checks names
+ * and the resulting collection schema.
  */
 export function collection<const N extends string, const F extends Fields>(
   name: N,
   fields: F,
 ): CollectionDefinition<N, F> {
-  checkName(name)
-  checkFields(fields)
   const idField: FieldBuilder | undefined = fields["_id"]
-  if (idField?.isOptional === true) throw new TypeError(`The _id of ${name} cannot be optional`)
   const idShape: Shape = idField?.shape ?? { kind: "scalar", type: "objectId" }
   const createId = idField?.fill ?? idGenerator(idShape)
   const shape = objectShape({
     ...fields,
-    _id: { shape: idShape, isOptional: false, fill: undefined, fields: undefined },
+    _id: {
+      shape: idShape,
+      isOptional: idField?.isOptional === true,
+      fill: undefined,
+      fields: undefined,
+    },
   })
   return Object.freeze({
     name,
@@ -144,16 +138,16 @@ export function collection<const N extends string, const F extends Fields>(
   })
 }
 
-/** Collects collection definitions into the app's schema, keyed by name. Names must be unique. */
+/**
+ * Collects collection definitions into the app's schema, keyed by name. Names must be unique:
+ * `canopy.js/emit` refuses a schema that declares a name twice.
+ */
 export function defineSchema<const C extends readonly AnyCollectionDefinition[]>(
   ...collections: C
 ): SchemaOf<C> {
   const out: Record<string, AnyCollectionDefinition> = {}
-  for (const definition of collections) {
-    if (Object.hasOwn(out, definition.name))
-      throw new TypeError(`The schema declares ${definition.name} twice`)
-    out[definition.name] = definition
-  }
+  for (const definition of collections) out[definition.name] = definition
+  Object.defineProperty(out, DECLARED, { value: Object.freeze([...collections]) })
   return Object.freeze(out) as SchemaOf<C>
 }
 

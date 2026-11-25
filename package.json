@@ -97,14 +97,14 @@
       "default": "./dist/core/policy/index.js"
     },
     "./policy/testing": {
-      "types": "./dist/core/policy/testing.d.ts",
-      "canopy-js-source": "./src/core/policy/testing.ts",
-      "default": "./dist/core/policy/testing.js"
+      "types": "./dist/policy/testing.d.ts",
+      "canopy-js-source": "./src/policy/testing.ts",
+      "default": "./dist/policy/testing.js"
     },
     "./schema": {
-      "types": "./dist/core/schema/define/index.d.ts",
-      "canopy-js-source": "./src/core/schema/define/index.ts",
-      "default": "./dist/core/schema/define/index.js"
+      "types": "./dist/schema/index.d.ts",
+      "canopy-js-source": "./src/schema/index.ts",
+      "default": "./dist/schema/index.js"
     },
     "./config": {
       "types": "./dist/core/config/index.d.ts",
@@ -115,6 +115,16 @@
       "types": "./dist/core/protocol/index.d.ts",
       "canopy-js-source": "./src/core/protocol/index.ts",
       "default": "./dist/core/protocol/index.js"
+    },
+    "./emit": {
+      "types": "./dist/emit/index.d.ts",
+      "canopy-js-source": "./src/emit/index.ts",
+      "default": "./dist/emit/index.js"
+    },
+    "./emit/cli": {
+      "types": "./dist/emit/cli.d.ts",
+      "canopy-js-source": "./src/emit/cli.ts",
+      "default": "./dist/emit/cli.js"
     },
     "./package.json": "./package.json"
   },

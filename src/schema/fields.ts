@@ -6,8 +6,8 @@ import {
   type ObjectId,
   ObjectId as ObjectIdClass,
   uuidv7,
-} from "../../protocol/index.ts"
-import { ANY, type Field, type ObjectShape, type ScalarType, type Shape, union } from "../shape.ts"
+} from "../core/protocol/index.ts"
+import { ANY, type Field, type ObjectShape, type ScalarType, type Shape, union } from "./shape.ts"
 
 /**
  * One field of a collection definition, made by the builders on {@link t}. It carries its TypeScript type
@@ -127,8 +127,6 @@ function builder<
       return builder<T, Optional, true>(shape, optional, () => copy(value), fields)
     },
     generate(create: () => T) {
-      if (typeof create !== "function")
-        throw new TypeError("generate() takes a function that returns a new value")
       return builder<T, Optional, true>(shape, optional, create, fields)
     },
   }) as unknown as Builder<T, Optional, Filled, AutoId>
@@ -140,24 +138,20 @@ function scalar<T, AutoId extends boolean = false>(
   return builder<T, false, false, AutoId>({ kind: "scalar", type }, false, undefined)
 }
 
-/** Checks field names: MongoDB reserves a leading `$`, and a `.` would read as a path. */
-export function checkFields<F extends Fields>(fields: F): F {
-  for (const name of Object.keys(fields)) {
-    if (name === "" || name.startsWith("$") || name.includes("."))
-      throw new TypeError(`${JSON.stringify(name)} is not a valid field name`)
-    const field = fields[name]
-    if (field === undefined || typeof field !== "object" || !("shape" in field))
-      throw new TypeError(`Field ${JSON.stringify(name)} is not a field builder from t`)
-  }
-  return fields
+/** Whether a value is a field builder from {@link t}. */
+export function isFieldBuilder(value: unknown): value is FieldBuilder {
+  return typeof value === "object" && value !== null && "shape" in value
 }
 
-/** Converts a set of fields to the object shape sampling and `$jsonSchema` conversion use. */
+/**
+ * Converts a set of fields to the object shape sampling and `$jsonSchema` conversion use. A value that is
+ * not a field builder is left out; `canopy.js/emit` reports it.
+ */
 export function objectShape(fields: Fields): ObjectShape {
   const out: Record<string, Field> = {}
   for (const name of Object.keys(fields).sort()) {
-    const field = fields[name]
-    if (field === undefined) continue
+    const field: unknown = fields[name]
+    if (!isFieldBuilder(field)) continue
     out[name] = { shape: field.shape, required: !field.isOptional }
   }
   return { kind: "object", fields: out, open: true }
@@ -205,16 +199,13 @@ export const t: {
   array: <B extends FieldBuilder>(items: B) =>
     builder<TypeOf<B>[], false, false>({ kind: "array", items: items.shape }, false, undefined),
   object: <F extends Fields>(fields: F) =>
-    builder<ObjectOf<F>, false, false>(objectShape(checkFields(fields)), false, undefined, fields),
-  enum: <const V extends readonly [string, ...string[]]>(values: V) => {
-    if (values.length === 0 || values.some((value) => typeof value !== "string"))
-      throw new TypeError("t.enum() takes one or more strings")
-    return builder<V[number], false, false>(
+    builder<ObjectOf<F>, false, false>(objectShape(fields), false, undefined, fields),
+  enum: <const V extends readonly [string, ...string[]]>(values: V) =>
+    builder<V[number], false, false>(
       { kind: "scalar", type: "string", values: [...new Set(values)].sort() },
       false,
       undefined,
-    )
-  },
+    ),
   union: <B extends readonly [FieldBuilder, ...FieldBuilder[]]>(...members: B) =>
     builder<TypeOf<B[number]>, false, false>(
       union(members.map((member) => member.shape)),

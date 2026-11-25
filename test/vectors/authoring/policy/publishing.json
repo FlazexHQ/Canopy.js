@@ -1,0 +1,1021 @@
+[
+  {
+    "name": "constructs",
+    "bundleHash": "sha256:2bb2e874f91361699b80c347a2ef34baa05c405d02ed14c1cddf3a1e454c8735",
+    "stored": [
+      {
+        "_id": "privateNotes",
+        "version": {
+          "$numberInt": "7"
+        },
+        "exposed": false,
+        "realtime": false,
+        "policies": [],
+        "hash": "sha256:1a7ba37af228e2c07de6d99c2c4ad55cebfa4ea57661150be0c65acb81e90bc8",
+        "updatedAt": {
+          "$date": {
+            "$numberLong": "1767225600000"
+          }
+        },
+        "updatedBy": "fixture"
+      },
+      {
+        "_id": "storage.objects",
+        "version": {
+          "$numberInt": "7"
+        },
+        "exposed": false,
+        "realtime": false,
+        "policies": [
+          {
+            "name": "download",
+            "kind": "permissive",
+            "ops": [
+              "read"
+            ],
+            "roles": [
+              "anon"
+            ]
+          }
+        ],
+        "hash": "sha256:ddc2335b6882a706e3a37f42fa3236d3343b7d155a986ba18fa0ea9d86bfdb1b",
+        "updatedAt": {
+          "$date": {
+            "$numberLong": "1767225600000"
+          }
+        },
+        "updatedBy": "fixture"
+      },
+      {
+        "_id": "projects",
+        "version": {
+          "$numberInt": "7"
+        },
+        "exposed": true,
+        "realtime": true,
+        "policies": [
+          {
+            "name": "permissive read #1",
+            "kind": "permissive",
+            "ops": [
+              "read"
+            ],
+            "roles": [
+              "editor",
+              "authenticated"
+            ],
+            "using": "{\"_id\":{\"$in\":{\"$ctx\":\"projectIds\"}},\"owner\":{\"$auth\":\"sub\",\"as\":\"objectId\"},\"code\":{\"$auth\":\"profile.code\",\"as\":\"string\"},\"score\":{\"$gte\":{\"$auth\":\"level\",\"as\":\"number\"}},\"enabled\":{\"$auth\":\"enabled\",\"as\":\"bool\"},\"expires\":{\"$gte\":{\"$auth\":\"expiry\",\"as\":\"date\"}},\"group\":{\"$auth\":\"group\",\"as\":\"uuid\"}}"
+          },
+          {
+            "name": "active projects",
+            "kind": "restrictive",
+            "ops": [
+              "read",
+              "update",
+              "delete"
+            ],
+            "roles": [
+              "authenticated"
+            ],
+            "using": "{\"deadline\":{\"$gt\":{\"$now\":{}}},\"createdAt\":{\"$gte\":{\"$now\":{\"offset\":\"-P7D\"}}}}"
+          },
+          {
+            "name": "permissive insert #3",
+            "kind": "permissive",
+            "ops": [
+              "insert"
+            ],
+            "roles": [
+              "authenticated"
+            ],
+            "check": "{\"owner\":{\"$auth\":\"sub\"},\"tenant\":{\"$oid\":\"000000000000000000000001\"},\"createdAt\":{\"$gte\":{\"$date\":{\"$numberLong\":\"1767225600000\"}}},\"priority\":{\"$gte\":{\"$numberInt\":\"2\"}}}"
+          },
+          {
+            "name": "permissive update #4",
+            "kind": "permissive",
+            "ops": [
+              "update"
+            ],
+            "roles": [
+              "authenticated"
+            ],
+            "using": "{\"owner\":{\"$auth\":\"sub\"}}",
+            "check": "{\"owner\":{\"$auth\":\"sub\"}}"
+          },
+          {
+            "name": "permissive delete #5",
+            "kind": "permissive",
+            "ops": [
+              "delete"
+            ],
+            "roles": [
+              "authenticated"
+            ],
+            "using": "{\"owner\":{\"$auth\":\"sub\"}}"
+          }
+        ],
+        "fields": {
+          "read": {
+            "default": {
+              "omit": [
+                "private.notes"
+              ]
+            },
+            "editor": {
+              "only": [
+                "*"
+              ]
+            }
+          },
+          "write": {
+            "default": {
+              "only": [
+                "title",
+                "owner"
+              ]
+            }
+          },
+          "update": {
+            "default": {
+              "only": []
+            }
+          }
+        },
+        "immutable": [
+          "owner",
+          "tenant"
+        ],
+        "hash": "sha256:089ea03cbe5ba863ae6e3924841eb047f68ccfc557a1bc36a2a998c983d95110",
+        "updatedAt": {
+          "$date": {
+            "$numberLong": "1767225600000"
+          }
+        },
+        "updatedBy": "fixture"
+      }
+    ]
+  },
+  {
+    "name": "deploy/dev/policies/notes.ts",
+    "bundleHash": "sha256:87a1737e7bd8ee86747d6ad134988c3430c79a76fe707b7f92a7907264a52a75",
+    "stored": [
+      {
+        "_id": "notes",
+        "version": {
+          "$numberInt": "7"
+        },
+        "exposed": true,
+        "realtime": true,
+        "policies": [
+          {
+            "name": "permissive read #1",
+            "kind": "permissive",
+            "ops": [
+              "read"
+            ],
+            "roles": [
+              "anon"
+            ],
+            "using": "{\"public\":true}"
+          },
+          {
+            "name": "permissive insert #2",
+            "kind": "permissive",
+            "ops": [
+              "insert"
+            ],
+            "roles": [
+              "anon"
+            ],
+            "check": "{\"public\":true}"
+          },
+          {
+            "name": "permissive update #3",
+            "kind": "permissive",
+            "ops": [
+              "update"
+            ],
+            "roles": [
+              "anon"
+            ],
+            "using": "{\"public\":true}",
+            "check": "{\"public\":true}"
+          },
+          {
+            "name": "permissive delete #4",
+            "kind": "permissive",
+            "ops": [
+              "delete"
+            ],
+            "roles": [
+              "anon"
+            ],
+            "using": "{\"public\":true}"
+          }
+        ],
+        "hash": "sha256:87736e7259d65b69b7e5d4a460ffa15226720dc1732d9c2314eba3136c7cac7a",
+        "updatedAt": {
+          "$date": {
+            "$numberLong": "1767225600000"
+          }
+        },
+        "updatedBy": "fixture"
+      }
+    ]
+  },
+  {
+    "name": "examples/auth-notes/src/policies.ts",
+    "bundleHash": "sha256:cde6c679eee33973d9be3c6c693a462eb8dfdf13c6f6cac85b9608c966842d77",
+    "stored": [
+      {
+        "_id": "notes",
+        "version": {
+          "$numberInt": "7"
+        },
+        "exposed": true,
+        "realtime": true,
+        "policies": [
+          {
+            "name": "read own",
+            "kind": "permissive",
+            "ops": [
+              "read"
+            ],
+            "roles": [
+              "authenticated"
+            ],
+            "using": "{\"ownerId\":{\"$auth\":\"sub\"}}"
+          },
+          {
+            "name": "create own",
+            "kind": "permissive",
+            "ops": [
+              "insert"
+            ],
+            "roles": [
+              "authenticated"
+            ],
+            "check": "{\"ownerId\":{\"$auth\":\"sub\"}}"
+          },
+          {
+            "name": "edit own",
+            "kind": "permissive",
+            "ops": [
+              "update"
+            ],
+            "roles": [
+              "authenticated"
+            ],
+            "using": "{\"ownerId\":{\"$auth\":\"sub\"}}",
+            "check": "{\"ownerId\":{\"$auth\":\"sub\"}}"
+          },
+          {
+            "name": "delete own",
+            "kind": "permissive",
+            "ops": [
+              "delete"
+            ],
+            "roles": [
+              "authenticated"
+            ],
+            "using": "{\"ownerId\":{\"$auth\":\"sub\"}}"
+          }
+        ],
+        "fields": {
+          "write": {
+            "default": {
+              "only": [
+                "text",
+                "ownerId",
+                "createdAt"
+              ]
+            }
+          }
+        },
+        "immutable": [
+          "ownerId",
+          "createdAt"
+        ],
+        "hash": "sha256:ea052127a049d936f535f4f9484331e24da4b6971d68057bc44c079fdc3c0669",
+        "updatedAt": {
+          "$date": {
+            "$numberLong": "1767225600000"
+          }
+        },
+        "updatedBy": "fixture"
+      }
+    ]
+  },
+  {
+    "name": "examples/express-dropin/canopy/policies/tickets.ts",
+    "bundleHash": "sha256:30db672c486ef0aec60a2aa3445e7502ae6bded198bfbbe1ce413760989904b8",
+    "stored": [
+      {
+        "_id": "tickets",
+        "version": {
+          "$numberInt": "7"
+        },
+        "exposed": true,
+        "realtime": true,
+        "policies": [
+          {
+            "name": "customers read their own tickets",
+            "kind": "permissive",
+            "ops": [
+              "read"
+            ],
+            "roles": [
+              "authenticated"
+            ],
+            "using": "{\"ownerId\":{\"$auth\":\"sub\"}}"
+          },
+          {
+            "name": "support reads every ticket",
+            "kind": "permissive",
+            "ops": [
+              "read"
+            ],
+            "roles": [
+              "support"
+            ]
+          }
+        ],
+        "fields": {
+          "read": {
+            "default": {
+              "omit": [
+                "internalNotes"
+              ]
+            },
+            "support": {
+              "only": [
+                "*"
+              ]
+            }
+          }
+        },
+        "hash": "sha256:3ac40ba656062088f19547b43bd318a223aa64463950a41db6dad6ee1fb5937c",
+        "updatedAt": {
+          "$date": {
+            "$numberLong": "1767225600000"
+          }
+        },
+        "updatedBy": "fixture"
+      }
+    ]
+  },
+  {
+    "name": "examples/graphql-vue/src/policies.ts",
+    "bundleHash": "sha256:453acebdbe098d1f5ffae194185076762ed97e4cb7cd8564f021d213cb19f307",
+    "stored": [
+      {
+        "_id": "topics",
+        "version": {
+          "$numberInt": "7"
+        },
+        "exposed": true,
+        "realtime": false,
+        "policies": [
+          {
+            "name": "read topics",
+            "kind": "permissive",
+            "ops": [
+              "read"
+            ],
+            "roles": [
+              "authenticated"
+            ]
+          }
+        ],
+        "hash": "sha256:284df6fa1ed8b35de5a2bda4d702585a9a80a313cca9455795fdf08c26d97063",
+        "updatedAt": {
+          "$date": {
+            "$numberLong": "1767225600000"
+          }
+        },
+        "updatedBy": "fixture"
+      },
+      {
+        "_id": "posts",
+        "version": {
+          "$numberInt": "7"
+        },
+        "exposed": true,
+        "realtime": true,
+        "policies": [
+          {
+            "name": "read posts",
+            "kind": "permissive",
+            "ops": [
+              "read"
+            ],
+            "roles": [
+              "authenticated"
+            ]
+          },
+          {
+            "name": "create own",
+            "kind": "permissive",
+            "ops": [
+              "insert"
+            ],
+            "roles": [
+              "authenticated"
+            ],
+            "check": "{\"ownerId\":{\"$auth\":\"sub\"}}"
+          },
+          {
+            "name": "delete own",
+            "kind": "permissive",
+            "ops": [
+              "delete"
+            ],
+            "roles": [
+              "authenticated"
+            ],
+            "using": "{\"ownerId\":{\"$auth\":\"sub\"}}"
+          }
+        ],
+        "fields": {
+          "write": {
+            "default": {
+              "only": [
+                "title",
+                "topicId",
+                "ownerId"
+              ]
+            }
+          }
+        },
+        "immutable": [
+          "ownerId",
+          "topicId"
+        ],
+        "hash": "sha256:2fe514a5d5d6cdbfa78cd6a40aaf29ef2034f708d68cbe5b19bedaeae0189538",
+        "updatedAt": {
+          "$date": {
+            "$numberLong": "1767225600000"
+          }
+        },
+        "updatedBy": "fixture"
+      }
+    ]
+  },
+  {
+    "name": "examples/next-ssr/canopy/server.ts",
+    "bundleHash": "sha256:44a44a0f556dd6088c68c26d437948a5a822196803ce0b983e0093a0c6f610ff",
+    "stored": [
+      {
+        "_id": "articles",
+        "version": {
+          "$numberInt": "7"
+        },
+        "exposed": true,
+        "realtime": true,
+        "policies": [
+          {
+            "name": "published",
+            "kind": "permissive",
+            "ops": [
+              "read"
+            ],
+            "roles": [
+              "anon",
+              "authenticated"
+            ],
+            "using": "{\"published\":true}"
+          }
+        ],
+        "hash": "sha256:20c5547086f1402a787c64a1d82958a04711c6e462e6aa8b245afae6f02ebba4",
+        "updatedAt": {
+          "$date": {
+            "$numberLong": "1767225600000"
+          }
+        },
+        "updatedBy": "fixture"
+      }
+    ]
+  },
+  {
+    "name": "examples/todo-react/src/policies.ts",
+    "bundleHash": "sha256:77fa8f6095658118e171db265689c2750ea51ce6d23118d5fc00bd6e8256f4da",
+    "stored": [
+      {
+        "_id": "todos",
+        "version": {
+          "$numberInt": "7"
+        },
+        "exposed": true,
+        "realtime": true,
+        "policies": [
+          {
+            "name": "permissive read #1",
+            "kind": "permissive",
+            "ops": [
+              "read"
+            ],
+            "roles": [
+              "authenticated"
+            ],
+            "using": "{\"$or\":[{\"shared\":true},{\"ownerId\":{\"$auth\":\"sub\"}}]}"
+          },
+          {
+            "name": "permissive insert #2",
+            "kind": "permissive",
+            "ops": [
+              "insert"
+            ],
+            "roles": [
+              "authenticated"
+            ],
+            "check": "{\"ownerId\":{\"$auth\":\"sub\"}}"
+          },
+          {
+            "name": "permissive update #3",
+            "kind": "permissive",
+            "ops": [
+              "update"
+            ],
+            "roles": [
+              "authenticated"
+            ],
+            "using": "{\"$or\":[{\"shared\":true},{\"ownerId\":{\"$auth\":\"sub\"}}]}",
+            "check": "{\"$or\":[{\"shared\":true},{\"ownerId\":{\"$auth\":\"sub\"}}]}"
+          },
+          {
+            "name": "permissive delete #4",
+            "kind": "permissive",
+            "ops": [
+              "delete"
+            ],
+            "roles": [
+              "authenticated"
+            ],
+            "using": "{\"ownerId\":{\"$auth\":\"sub\"}}"
+          }
+        ],
+        "hash": "sha256:b6f88cad85687cad1714eb779ee41a6fd7ac9fee083713fe49d54b8a24b0356d",
+        "updatedAt": {
+          "$date": {
+            "$numberLong": "1767225600000"
+          }
+        },
+        "updatedBy": "fixture"
+      }
+    ]
+  },
+  {
+    "name": "packages/sdk-e2e/test/auth.e2e.test.ts",
+    "bundleHash": "sha256:07b46d49120cddc666a351c53febd9da8b857ac81f8d7d1d2badecabfd883097",
+    "stored": [
+      {
+        "_id": "notes",
+        "version": {
+          "$numberInt": "7"
+        },
+        "exposed": true,
+        "realtime": true,
+        "policies": [
+          {
+            "name": "permissive read #1",
+            "kind": "permissive",
+            "ops": [
+              "read"
+            ],
+            "roles": [
+              "authenticated"
+            ],
+            "using": "{\"ownerId\":{\"$auth\":\"sub\"}}"
+          }
+        ],
+        "hash": "sha256:2db151e1478d24375c13cfa722ca382779a5e8a65855bd3c15e7c221c8b3e8d7",
+        "updatedAt": {
+          "$date": {
+            "$numberLong": "1767225600000"
+          }
+        },
+        "updatedBy": "fixture"
+      }
+    ]
+  },
+  {
+    "name": "packages/sdk-e2e/test/fallback.e2e.test.ts",
+    "bundleHash": "sha256:6b7aae5c21e89103781ee4efbcd9a239f31ab5d0785283cd02768c6deec61460",
+    "stored": [
+      {
+        "_id": "todos",
+        "version": {
+          "$numberInt": "7"
+        },
+        "exposed": true,
+        "realtime": true,
+        "policies": [
+          {
+            "name": "permissive read #1",
+            "kind": "permissive",
+            "ops": [
+              "read"
+            ],
+            "roles": [
+              "authenticated"
+            ],
+            "using": "{\"ownerId\":{\"$auth\":\"sub\"}}"
+          },
+          {
+            "name": "permissive insert #2",
+            "kind": "permissive",
+            "ops": [
+              "insert"
+            ],
+            "roles": [
+              "authenticated"
+            ],
+            "check": "{\"ownerId\":{\"$auth\":\"sub\"}}"
+          },
+          {
+            "name": "permissive update #3",
+            "kind": "permissive",
+            "ops": [
+              "update"
+            ],
+            "roles": [
+              "authenticated"
+            ],
+            "using": "{\"ownerId\":{\"$auth\":\"sub\"}}",
+            "check": "{\"ownerId\":{\"$auth\":\"sub\"}}"
+          },
+          {
+            "name": "permissive delete #4",
+            "kind": "permissive",
+            "ops": [
+              "delete"
+            ],
+            "roles": [
+              "authenticated"
+            ],
+            "using": "{\"ownerId\":{\"$auth\":\"sub\"}}"
+          }
+        ],
+        "hash": "sha256:e7692db137bbbec9a6f1e936c2ef87644d6bedc39b7a8381eb34d07475b6466f",
+        "updatedAt": {
+          "$date": {
+            "$numberLong": "1767225600000"
+          }
+        },
+        "updatedBy": "fixture"
+      }
+    ]
+  },
+  {
+    "name": "packages/sdk-e2e/test/mutations.e2e.test.ts",
+    "bundleHash": "sha256:6b7aae5c21e89103781ee4efbcd9a239f31ab5d0785283cd02768c6deec61460",
+    "stored": [
+      {
+        "_id": "todos",
+        "version": {
+          "$numberInt": "7"
+        },
+        "exposed": true,
+        "realtime": true,
+        "policies": [
+          {
+            "name": "permissive read #1",
+            "kind": "permissive",
+            "ops": [
+              "read"
+            ],
+            "roles": [
+              "authenticated"
+            ],
+            "using": "{\"ownerId\":{\"$auth\":\"sub\"}}"
+          },
+          {
+            "name": "permissive insert #2",
+            "kind": "permissive",
+            "ops": [
+              "insert"
+            ],
+            "roles": [
+              "authenticated"
+            ],
+            "check": "{\"ownerId\":{\"$auth\":\"sub\"}}"
+          },
+          {
+            "name": "permissive update #3",
+            "kind": "permissive",
+            "ops": [
+              "update"
+            ],
+            "roles": [
+              "authenticated"
+            ],
+            "using": "{\"ownerId\":{\"$auth\":\"sub\"}}",
+            "check": "{\"ownerId\":{\"$auth\":\"sub\"}}"
+          },
+          {
+            "name": "permissive delete #4",
+            "kind": "permissive",
+            "ops": [
+              "delete"
+            ],
+            "roles": [
+              "authenticated"
+            ],
+            "using": "{\"ownerId\":{\"$auth\":\"sub\"}}"
+          }
+        ],
+        "hash": "sha256:e7692db137bbbec9a6f1e936c2ef87644d6bedc39b7a8381eb34d07475b6466f",
+        "updatedAt": {
+          "$date": {
+            "$numberLong": "1767225600000"
+          }
+        },
+        "updatedBy": "fixture"
+      }
+    ]
+  },
+  {
+    "name": "packages/sdk-e2e/test/offline.e2e.test.ts",
+    "bundleHash": "sha256:6b7aae5c21e89103781ee4efbcd9a239f31ab5d0785283cd02768c6deec61460",
+    "stored": [
+      {
+        "_id": "todos",
+        "version": {
+          "$numberInt": "7"
+        },
+        "exposed": true,
+        "realtime": true,
+        "policies": [
+          {
+            "name": "permissive read #1",
+            "kind": "permissive",
+            "ops": [
+              "read"
+            ],
+            "roles": [
+              "authenticated"
+            ],
+            "using": "{\"ownerId\":{\"$auth\":\"sub\"}}"
+          },
+          {
+            "name": "permissive insert #2",
+            "kind": "permissive",
+            "ops": [
+              "insert"
+            ],
+            "roles": [
+              "authenticated"
+            ],
+            "check": "{\"ownerId\":{\"$auth\":\"sub\"}}"
+          },
+          {
+            "name": "permissive update #3",
+            "kind": "permissive",
+            "ops": [
+              "update"
+            ],
+            "roles": [
+              "authenticated"
+            ],
+            "using": "{\"ownerId\":{\"$auth\":\"sub\"}}",
+            "check": "{\"ownerId\":{\"$auth\":\"sub\"}}"
+          },
+          {
+            "name": "permissive delete #4",
+            "kind": "permissive",
+            "ops": [
+              "delete"
+            ],
+            "roles": [
+              "authenticated"
+            ],
+            "using": "{\"ownerId\":{\"$auth\":\"sub\"}}"
+          }
+        ],
+        "hash": "sha256:e7692db137bbbec9a6f1e936c2ef87644d6bedc39b7a8381eb34d07475b6466f",
+        "updatedAt": {
+          "$date": {
+            "$numberLong": "1767225600000"
+          }
+        },
+        "updatedBy": "fixture"
+      }
+    ]
+  },
+  {
+    "name": "packages/sdk-e2e/test/rest-writes.e2e.test.ts",
+    "bundleHash": "sha256:00917a4d18147931e8187ebdfcb41a543e1a484def780907043057ce138e0deb",
+    "stored": [
+      {
+        "_id": "notes",
+        "version": {
+          "$numberInt": "7"
+        },
+        "exposed": true,
+        "realtime": true,
+        "policies": [
+          {
+            "name": "permissive read #1",
+            "kind": "permissive",
+            "ops": [
+              "read"
+            ],
+            "roles": [
+              "authenticated"
+            ],
+            "using": "{\"ownerId\":{\"$auth\":\"sub\"}}"
+          },
+          {
+            "name": "permissive insert #2",
+            "kind": "permissive",
+            "ops": [
+              "insert"
+            ],
+            "roles": [
+              "authenticated"
+            ],
+            "check": "{\"ownerId\":{\"$auth\":\"sub\"}}"
+          },
+          {
+            "name": "permissive update #3",
+            "kind": "permissive",
+            "ops": [
+              "update"
+            ],
+            "roles": [
+              "authenticated"
+            ],
+            "using": "{\"ownerId\":{\"$auth\":\"sub\"}}",
+            "check": "{\"ownerId\":{\"$auth\":\"sub\"}}"
+          },
+          {
+            "name": "permissive delete #4",
+            "kind": "permissive",
+            "ops": [
+              "delete"
+            ],
+            "roles": [
+              "authenticated"
+            ],
+            "using": "{\"ownerId\":{\"$auth\":\"sub\"}}"
+          }
+        ],
+        "hash": "sha256:f8f81e6b379a8b1ebac3b001e86d3737a93e42e5f72c4367f5abedf3ed3db98a",
+        "updatedAt": {
+          "$date": {
+            "$numberLong": "1767225600000"
+          }
+        },
+        "updatedBy": "fixture"
+      }
+    ]
+  },
+  {
+    "name": "packages/sdk-e2e/test/rest.e2e.test.ts",
+    "bundleHash": "sha256:a4f8bfb8b3c41c4bbede37e1f9a3ac86e404ecf9ab29e5b71c3e2ba46ed73591",
+    "stored": [
+      {
+        "_id": "items",
+        "version": {
+          "$numberInt": "7"
+        },
+        "exposed": true,
+        "realtime": true,
+        "policies": [
+          {
+            "name": "permissive read #1",
+            "kind": "permissive",
+            "ops": [
+              "read"
+            ],
+            "roles": [
+              "authenticated"
+            ],
+            "using": "{\"ownerId\":{\"$auth\":\"sub\"}}"
+          }
+        ],
+        "hash": "sha256:35f35030aa16e4fc76f05cfefaf16d38c3e3378e86158f2c578125b1994fd3a0",
+        "updatedAt": {
+          "$date": {
+            "$numberLong": "1767225600000"
+          }
+        },
+        "updatedBy": "fixture"
+      }
+    ]
+  },
+  {
+    "name": "packages/sdk-e2e/test/sharded.e2e.test.ts",
+    "bundleHash": "sha256:5184dc2e8c2d3f9b1c91895f5f0d46e368ebdd9178f796837dfb499effa66af1",
+    "stored": [
+      {
+        "_id": "orders",
+        "version": {
+          "$numberInt": "7"
+        },
+        "exposed": true,
+        "realtime": true,
+        "policies": [
+          {
+            "name": "permissive read #1",
+            "kind": "permissive",
+            "ops": [
+              "read"
+            ],
+            "roles": [
+              "authenticated"
+            ],
+            "using": "{\"ownerId\":{\"$auth\":\"sub\"}}"
+          },
+          {
+            "name": "permissive insert #2",
+            "kind": "permissive",
+            "ops": [
+              "insert"
+            ],
+            "roles": [
+              "authenticated"
+            ],
+            "check": "{\"ownerId\":{\"$auth\":\"sub\"}}"
+          },
+          {
+            "name": "permissive update #3",
+            "kind": "permissive",
+            "ops": [
+              "update"
+            ],
+            "roles": [
+              "authenticated"
+            ],
+            "using": "{\"ownerId\":{\"$auth\":\"sub\"}}",
+            "check": "{\"ownerId\":{\"$auth\":\"sub\"}}"
+          }
+        ],
+        "hash": "sha256:f13c874f30ff95715e4cd0de3fbcd18c6749512024938eb250e87bd656d2578c",
+        "updatedAt": {
+          "$date": {
+            "$numberLong": "1767225600000"
+          }
+        },
+        "updatedBy": "fixture"
+      }
+    ]
+  },
+  {
+    "name": "packages/sdk-e2e/test/split-roles.e2e.test.ts",
+    "bundleHash": "sha256:bfd8b4f09edc2dfb53c1be3231414954f126c30f8dad1a2789c14c5ab327fb10",
+    "stored": [
+      {
+        "_id": "notes",
+        "version": {
+          "$numberInt": "7"
+        },
+        "exposed": true,
+        "realtime": true,
+        "policies": [
+          {
+            "name": "permissive read #1",
+            "kind": "permissive",
+            "ops": [
+              "read"
+            ],
+            "roles": [
+              "authenticated"
+            ],
+            "using": "{\"ownerId\":{\"$auth\":\"sub\"}}"
+          },
+          {
+            "name": "permissive insert #2",
+            "kind": "permissive",
+            "ops": [
+              "insert"
+            ],
+            "roles": [
+              "authenticated"
+            ],
+            "check": "{\"ownerId\":{\"$auth\":\"sub\"}}"
+          },
+          {
+            "name": "permissive update #3",
+            "kind": "permissive",
+            "ops": [
+              "update"
+            ],
+            "roles": [
+              "authenticated"
+            ],
+            "using": "{\"ownerId\":{\"$auth\":\"sub\"}}",
+            "check": "{\"ownerId\":{\"$auth\":\"sub\"}}"
+          }
+        ],
+        "hash": "sha256:4de0cd800d15ea53f2bc45028129d6313c210cdce315f09b471caf4f9df3229a",
+        "updatedAt": {
+          "$date": {
+            "$numberLong": "1767225600000"
+          }
+        },
+        "updatedBy": "fixture"
+      }
+    ]
+  }
+]

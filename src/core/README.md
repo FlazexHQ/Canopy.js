@@ -6,4 +6,6 @@ relative paths. Canopy is the source of truth: change them there, then run `bun 
 
 `wasm/` holds the Rust client core, built by Canopy to WebAssembly and to JavaScript (wasm2js) and copied
 by `bun scripts/sync-wasm.ts` with a checksum manifest; `bun run check:wasm` fails when the copy differs from
-the build in Canopy. The client evaluates filters, sorts, projections and updates with it.
+the build in Canopy. The client evaluates filters, sorts, projections and updates with it; the authoring
+module (WebAssembly only) validates the canonical documents of `canopy.js/emit` and never loads from a client
+entry point. The schema DSL is not vendored: Canopy.js owns it in `src/schema`.

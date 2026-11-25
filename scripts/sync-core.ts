@@ -5,8 +5,11 @@ import { fileURLToPath } from "node:url"
 import ts from "typescript"
 
 /**
- * Vendors the universal core of Canopy (protocol, query, policy, config and the schema DSL, with the parts of
- * the matcher they use) into `src/core` (except `src/core/wasm`, which `sync-wasm.ts` owns), the protocol conformance vectors into `test/vectors`, and the edge config into the CLI templates.
+ * Vendors the universal core of Canopy (protocol, query, policy and config, with the parts of the matcher
+ * they use) into `src/core` (except `src/core/wasm`, which `sync-wasm.ts` owns), the protocol conformance
+ * vectors into `test/vectors`, the authoring vectors and their JSON Schemas into `test/vectors/authoring`,
+ * and the edge config into the CLI templates. The schema DSL is no longer vendored: Canopy.js owns it in
+ * `src/schema`, and the Rust authoring module validates what it builds.
  *
  * Canopy is the source of truth for these modules: the server, the Rust equivalence suites and the MongoDB
  * differential tests all live there. This script copies every file reachable from the entry points below,
@@ -22,6 +25,18 @@ const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..")
 const CORE_DIR = join(ROOT, "src", "core")
 const WASM_DIR = join(CORE_DIR, "wasm")
 const VECTORS_DIR = join(ROOT, "test", "vectors")
+
+/** The authoring documents the emitter tests replay, as paths under `conformance/authoring`. */
+const AUTHORING = [
+  "policy-set.schema.json",
+  "policy-test.schema.json",
+  "config.schema.json",
+  "collection-schema.schema.json",
+  "policy/vectors.json",
+  "policy/publishing.json",
+  "config/vectors.json",
+  "schema/vectors.json",
+] as const
 const EDGE_CONFIG = join(ROOT, "templates", "cli", "Caddyfile")
 
 /**
@@ -35,11 +50,10 @@ const ENTRIES = [
   "@canopy/policy",
   "@canopy/policy/testing",
   "@canopy/config",
-  "@canopy/schema/define",
 ] as const
 
 /** Packages whose sources may be vendored. */
-const VENDORED = new Set(["protocol", "matcher", "query", "policy", "config", "schema"])
+const VENDORED = new Set(["protocol", "matcher", "query", "policy", "config"])
 
 /** How the public names of the vendored packages read inside canopy.js, for doc comments. */
 const PUBLIC_NAMES: ReadonlyArray<readonly [string, string]> = [
@@ -193,6 +207,15 @@ function plan(repo: string): Map<string, string> {
     files.set(
       join(VECTORS_DIR, name),
       readFileSync(join(vectors, name), "utf8").replace(/\r\n/g, "\n"),
+    )
+  }
+  for (const name of AUTHORING) {
+    files.set(
+      join(VECTORS_DIR, "authoring", ...name.split("/")),
+      readFileSync(join(repo, "conformance", "authoring", ...name.split("/")), "utf8").replace(
+        /\r\n/g,
+        "\n",
+      ),
     )
   }
   files.set(

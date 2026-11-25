@@ -1,0 +1,15 @@
+{
+  "_id": "archive",
+  "exposed": false,
+  "realtime": false,
+  "policies": [
+    {
+      "name": "owners read",
+      "kind": "permissive",
+      "ops": ["read"],
+      "roles": ["authenticated"],
+      "using": "{\"owner\":{\"$auth\":\"sub\"}}"
+    }
+  ],
+  "version": 3
+}

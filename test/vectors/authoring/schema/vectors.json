@@ -1,0 +1,954 @@
+{
+  "authored": [
+    {
+      "name": "all-builders",
+      "source": "defineSchema(\n  collection(\"uuid-items\", { _id: t.uuid() }),\n  collection(\"assigned-id\", { _id: t.string() }),\n  collection(\"generated-id\", { _id: t.string().generate(() => \"generated\") }),\n  collection(\"notes\", {\n    oid: t.objectId(), name: t.string(), count: t.int(),\n    ratio: t.double(), total: t.long(), price: t.decimal(),\n    done: t.bool().default(false), created: t.date().generate(() => new Date()),\n    uuid: t.uuid(), bytes: t.binary(), arbitrary: t.any(),\n    tags: t.array(t.string()).optional(),\n    detail: t.object({ label: t.string().nullable(), rank: t.int().optional() }),\n    state: t.enum([\"open\", \"closed\", \"open\"]),\n    choice: t.union(t.long(), t.union(t.int(), t.string())).nullable(),\n  })\n)",
+      "document": {
+        "version": 1,
+        "collections": [
+          {
+            "name": "assigned-id",
+            "shape": {
+              "kind": "object",
+              "fields": {
+                "_id": {
+                  "shape": {
+                    "kind": "scalar",
+                    "type": "string"
+                  },
+                  "required": true
+                }
+              },
+              "open": true
+            },
+            "source": "config"
+          },
+          {
+            "name": "generated-id",
+            "shape": {
+              "kind": "object",
+              "fields": {
+                "_id": {
+                  "shape": {
+                    "kind": "scalar",
+                    "type": "string"
+                  },
+                  "required": true
+                }
+              },
+              "open": true
+            },
+            "source": "config"
+          },
+          {
+            "name": "notes",
+            "shape": {
+              "kind": "object",
+              "fields": {
+                "_id": {
+                  "shape": {
+                    "kind": "scalar",
+                    "type": "objectId"
+                  },
+                  "required": true
+                },
+                "arbitrary": {
+                  "shape": {
+                    "kind": "any"
+                  },
+                  "required": true
+                },
+                "bytes": {
+                  "shape": {
+                    "kind": "scalar",
+                    "type": "binData"
+                  },
+                  "required": true
+                },
+                "choice": {
+                  "shape": {
+                    "kind": "union",
+                    "of": [
+                      {
+                        "kind": "scalar",
+                        "type": "long"
+                      },
+                      {
+                        "kind": "scalar",
+                        "type": "int"
+                      },
+                      {
+                        "kind": "scalar",
+                        "type": "string"
+                      },
+                      {
+                        "kind": "scalar",
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "required": true
+                },
+                "count": {
+                  "shape": {
+                    "kind": "scalar",
+                    "type": "int"
+                  },
+                  "required": true
+                },
+                "created": {
+                  "shape": {
+                    "kind": "scalar",
+                    "type": "date"
+                  },
+                  "required": true
+                },
+                "detail": {
+                  "shape": {
+                    "kind": "object",
+                    "fields": {
+                      "label": {
+                        "shape": {
+                          "kind": "union",
+                          "of": [
+                            {
+                              "kind": "scalar",
+                              "type": "string"
+                            },
+                            {
+                              "kind": "scalar",
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "required": true
+                      },
+                      "rank": {
+                        "shape": {
+                          "kind": "scalar",
+                          "type": "int"
+                        },
+                        "required": false
+                      }
+                    },
+                    "open": true
+                  },
+                  "required": true
+                },
+                "done": {
+                  "shape": {
+                    "kind": "scalar",
+                    "type": "bool"
+                  },
+                  "required": true
+                },
+                "name": {
+                  "shape": {
+                    "kind": "scalar",
+                    "type": "string"
+                  },
+                  "required": true
+                },
+                "oid": {
+                  "shape": {
+                    "kind": "scalar",
+                    "type": "objectId"
+                  },
+                  "required": true
+                },
+                "price": {
+                  "shape": {
+                    "kind": "scalar",
+                    "type": "decimal"
+                  },
+                  "required": true
+                },
+                "ratio": {
+                  "shape": {
+                    "kind": "scalar",
+                    "type": "double"
+                  },
+                  "required": true
+                },
+                "state": {
+                  "shape": {
+                    "kind": "scalar",
+                    "type": "string",
+                    "values": [
+                      "closed",
+                      "open"
+                    ]
+                  },
+                  "required": true
+                },
+                "tags": {
+                  "shape": {
+                    "kind": "array",
+                    "items": {
+                      "kind": "scalar",
+                      "type": "string"
+                    }
+                  },
+                  "required": false
+                },
+                "total": {
+                  "shape": {
+                    "kind": "scalar",
+                    "type": "long"
+                  },
+                  "required": true
+                },
+                "uuid": {
+                  "shape": {
+                    "kind": "scalar",
+                    "type": "uuid"
+                  },
+                  "required": true
+                }
+              },
+              "open": true
+            },
+            "source": "config"
+          },
+          {
+            "name": "uuid-items",
+            "shape": {
+              "kind": "object",
+              "fields": {
+                "_id": {
+                  "shape": {
+                    "kind": "scalar",
+                    "type": "uuid"
+                  },
+                  "required": true
+                }
+              },
+              "open": true
+            },
+            "source": "config"
+          }
+        ]
+      }
+    },
+    {
+      "name": "empty",
+      "source": "defineSchema()",
+      "document": {
+        "version": 1,
+        "collections": []
+      }
+    }
+  ],
+  "invalid": [
+    {
+      "name": "collection-name",
+      "source": "collection(\"system.notes\", {})",
+      "path": "/collections/0/name",
+      "error": {
+        "code": "CANOPY_SCHEMA_INVALID",
+        "message": "\"system.notes\" is not a valid collection name"
+      }
+    },
+    {
+      "name": "field-name",
+      "source": "collection(\"notes\", { \"a.b\": t.int() })",
+      "path": "/collections/0/shape/fields/a.b",
+      "error": {
+        "code": "CANOPY_SCHEMA_INVALID",
+        "message": "\"a.b\" is not a valid field name"
+      }
+    },
+    {
+      "name": "field-builder",
+      "source": "collection(\"notes\", { count: 3 })",
+      "path": "/collections/0/shape/fields/count",
+      "error": {
+        "code": "CANOPY_SCHEMA_INVALID",
+        "message": "Field \"count\" is not a field builder from t"
+      }
+    },
+    {
+      "name": "optional-id",
+      "source": "collection(\"notes\", { _id: t.string().optional() })",
+      "path": "/collections/0/shape/fields/_id/required",
+      "error": {
+        "code": "CANOPY_SCHEMA_INVALID",
+        "message": "The _id of notes cannot be optional"
+      }
+    },
+    {
+      "name": "empty-enum",
+      "source": "collection(\"notes\", { kind: t.enum([]) })",
+      "path": "/collections/0/shape/fields/kind/shape/values",
+      "error": {
+        "code": "CANOPY_SCHEMA_INVALID",
+        "message": "t.enum() takes one or more strings"
+      }
+    },
+    {
+      "name": "duplicate",
+      "source": "defineSchema(collection(\"notes\", {}), collection(\"notes\", {}))",
+      "path": "/collections/1/name",
+      "error": {
+        "code": "CANOPY_SCHEMA_INVALID",
+        "message": "The schema declares notes twice"
+      }
+    },
+    {
+      "name": "generator-type",
+      "source": "collection(\"notes\", { greeting: t.string().generate(42) })",
+      "path": "/collections/0/shape/fields/greeting",
+      "error": {
+        "code": "CANOPY_SCHEMA_INVALID",
+        "message": "generate() takes a function that returns a new value"
+      }
+    }
+  ],
+  "pull": {
+    "source": "// Written by canopy pull. This file is yours now: edit it, review it and commit it.\nimport { collection, defineSchema, t } from \"canopy.js/schema\"\n\nexport const notes = collection(\"notes\", {\n  _id: t.int(),\n  body: t.string(),\n  tags: t.array(t.string()).optional(),\n})\n\nexport const todoItems = collection(\"todo-items\", {\n  _id: t.int(),\n  detail: t.object({\n    due: t.any(), // TODO(canopy pull): null has no builder\n    labels: t.array(t.string()),\n  }).optional(), // TODO(canopy pull): inferred from sampled documents, review\n  status: t.string(),\n})\n\nexport const schema = defineSchema(notes, todoItems)\n",
+    "origin": "conformance/typegen/pull.json",
+    "document": {
+      "version": 1,
+      "collections": [
+        {
+          "name": "notes",
+          "shape": {
+            "kind": "object",
+            "fields": {
+              "_id": {
+                "shape": {
+                  "kind": "scalar",
+                  "type": "int"
+                },
+                "required": true
+              },
+              "body": {
+                "shape": {
+                  "kind": "scalar",
+                  "type": "string"
+                },
+                "required": true
+              },
+              "tags": {
+                "shape": {
+                  "kind": "array",
+                  "items": {
+                    "kind": "scalar",
+                    "type": "string"
+                  }
+                },
+                "required": false
+              }
+            },
+            "open": true
+          },
+          "source": "validator"
+        },
+        {
+          "name": "todo-items",
+          "shape": {
+            "kind": "object",
+            "fields": {
+              "_id": {
+                "shape": {
+                  "kind": "scalar",
+                  "type": "int"
+                },
+                "required": true
+              },
+              "detail": {
+                "shape": {
+                  "kind": "object",
+                  "fields": {
+                    "due": {
+                      "shape": {
+                        "kind": "scalar",
+                        "type": "null"
+                      },
+                      "required": true
+                    },
+                    "labels": {
+                      "shape": {
+                        "kind": "array",
+                        "items": {
+                          "kind": "scalar",
+                          "type": "string"
+                        }
+                      },
+                      "required": true
+                    }
+                  },
+                  "open": true
+                },
+                "required": false
+              },
+              "status": {
+                "shape": {
+                  "kind": "scalar",
+                  "type": "string"
+                },
+                "required": true
+              }
+            },
+            "open": true
+          },
+          "source": "inferred",
+          "sampled": 200
+        }
+      ]
+    },
+    "editableDocument": {
+      "version": 1,
+      "collections": [
+        {
+          "name": "notes",
+          "shape": {
+            "kind": "object",
+            "fields": {
+              "_id": {
+                "shape": {
+                  "kind": "scalar",
+                  "type": "int"
+                },
+                "required": true
+              },
+              "body": {
+                "shape": {
+                  "kind": "scalar",
+                  "type": "string"
+                },
+                "required": true
+              },
+              "tags": {
+                "shape": {
+                  "kind": "array",
+                  "items": {
+                    "kind": "scalar",
+                    "type": "string"
+                  }
+                },
+                "required": false
+              }
+            },
+            "open": true
+          },
+          "source": "config"
+        },
+        {
+          "name": "todo-items",
+          "shape": {
+            "kind": "object",
+            "fields": {
+              "_id": {
+                "shape": {
+                  "kind": "scalar",
+                  "type": "int"
+                },
+                "required": true
+              },
+              "detail": {
+                "shape": {
+                  "kind": "object",
+                  "fields": {
+                    "due": {
+                      "shape": {
+                        "kind": "any"
+                      },
+                      "required": true
+                    },
+                    "labels": {
+                      "shape": {
+                        "kind": "array",
+                        "items": {
+                          "kind": "scalar",
+                          "type": "string"
+                        }
+                      },
+                      "required": true
+                    }
+                  },
+                  "open": true
+                },
+                "required": false
+              },
+              "status": {
+                "shape": {
+                  "kind": "scalar",
+                  "type": "string"
+                },
+                "required": true
+              }
+            },
+            "open": true
+          },
+          "source": "config"
+        }
+      ]
+    }
+  },
+  "typegen": {
+    "origin": "conformance/typegen/generate.json",
+    "document": {
+      "version": 1,
+      "collections": [
+        {
+          "name": "bson-and-field-order",
+          "shape": {
+            "kind": "object",
+            "fields": {
+              "2": {
+                "shape": {
+                  "kind": "scalar",
+                  "type": "bool"
+                },
+                "required": false
+              },
+              "10": {
+                "shape": {
+                  "kind": "scalar",
+                  "type": "bool"
+                },
+                "required": false
+              },
+              "allScalars": {
+                "shape": {
+                  "kind": "array",
+                  "items": {
+                    "kind": "union",
+                    "of": [
+                      {
+                        "kind": "scalar",
+                        "type": "null"
+                      },
+                      {
+                        "kind": "scalar",
+                        "type": "bool"
+                      },
+                      {
+                        "kind": "scalar",
+                        "type": "int"
+                      },
+                      {
+                        "kind": "scalar",
+                        "type": "long"
+                      },
+                      {
+                        "kind": "scalar",
+                        "type": "double"
+                      },
+                      {
+                        "kind": "scalar",
+                        "type": "decimal"
+                      },
+                      {
+                        "kind": "scalar",
+                        "type": "string"
+                      },
+                      {
+                        "kind": "scalar",
+                        "type": "objectId"
+                      },
+                      {
+                        "kind": "scalar",
+                        "type": "uuid"
+                      },
+                      {
+                        "kind": "scalar",
+                        "type": "binData"
+                      },
+                      {
+                        "kind": "scalar",
+                        "type": "date"
+                      },
+                      {
+                        "kind": "scalar",
+                        "type": "timestamp"
+                      },
+                      {
+                        "kind": "scalar",
+                        "type": "regex"
+                      },
+                      {
+                        "kind": "scalar",
+                        "type": "javascript"
+                      },
+                      {
+                        "kind": "scalar",
+                        "type": "minKey"
+                      },
+                      {
+                        "kind": "scalar",
+                        "type": "maxKey"
+                      },
+                      {
+                        "kind": "object",
+                        "fields": {
+                          "nested": {
+                            "shape": {
+                              "kind": "scalar",
+                              "type": "bool"
+                            },
+                            "required": true
+                          }
+                        },
+                        "open": true
+                      },
+                      {
+                        "kind": "array",
+                        "items": {
+                          "kind": "any"
+                        }
+                      }
+                    ]
+                  }
+                },
+                "required": false
+              },
+              "nested": {
+                "shape": {
+                  "kind": "array",
+                  "items": {
+                    "kind": "array",
+                    "items": {
+                      "kind": "union",
+                      "of": [
+                        {
+                          "kind": "scalar",
+                          "type": "bool"
+                        },
+                        {
+                          "kind": "object",
+                          "fields": {
+                            "a": {
+                              "shape": {
+                                "kind": "scalar",
+                                "type": "bool"
+                              },
+                              "required": false
+                            },
+                            "b": {
+                              "shape": {
+                                "kind": "scalar",
+                                "type": "bool"
+                              },
+                              "required": false
+                            }
+                          },
+                          "open": true
+                        },
+                        {
+                          "kind": "array",
+                          "items": {
+                            "kind": "any"
+                          }
+                        }
+                      ]
+                    }
+                  }
+                },
+                "required": false
+              },
+              "optional": {
+                "shape": {
+                  "kind": "object",
+                  "fields": {
+                    "a": {
+                      "shape": {
+                        "kind": "scalar",
+                        "type": "string"
+                      },
+                      "required": false
+                    },
+                    "b": {
+                      "shape": {
+                        "kind": "array",
+                        "items": {
+                          "kind": "any"
+                        }
+                      },
+                      "required": false
+                    },
+                    "common": {
+                      "shape": {
+                        "kind": "union",
+                        "of": [
+                          {
+                            "kind": "scalar",
+                            "type": "bool"
+                          },
+                          {
+                            "kind": "scalar",
+                            "type": "double"
+                          }
+                        ]
+                      },
+                      "required": true
+                    }
+                  },
+                  "open": true
+                },
+                "required": true
+              },
+              "pointer": {
+                "shape": {
+                  "kind": "any"
+                },
+                "required": false
+              },
+              "undefinedArray": {
+                "shape": {
+                  "kind": "array",
+                  "items": {
+                    "kind": "scalar",
+                    "type": "null"
+                  }
+                },
+                "required": false
+              },
+              "undefinedField": {
+                "shape": {
+                  "kind": "scalar",
+                  "type": "bool"
+                },
+                "required": false
+              },
+              "z": {
+                "shape": {
+                  "kind": "union",
+                  "of": [
+                    {
+                      "kind": "scalar",
+                      "type": "null"
+                    },
+                    {
+                      "kind": "array",
+                      "items": {
+                        "kind": "any"
+                      }
+                    }
+                  ]
+                },
+                "required": true
+              },
+              "é": {
+                "shape": {
+                  "kind": "scalar",
+                  "type": "bool"
+                },
+                "required": false
+              },
+              "𐀀": {
+                "shape": {
+                  "kind": "scalar",
+                  "type": "bool"
+                },
+                "required": false
+              },
+              "": {
+                "shape": {
+                  "kind": "scalar",
+                  "type": "bool"
+                },
+                "required": false
+              }
+            },
+            "open": true
+          },
+          "source": "inferred",
+          "sampled": 2
+        },
+        {
+          "name": "empty",
+          "shape": {
+            "kind": "object",
+            "fields": {},
+            "open": true
+          },
+          "source": "inferred",
+          "sampled": 0
+        },
+        {
+          "name": "enums-custom",
+          "shape": {
+            "kind": "object",
+            "fields": {
+              "val": {
+                "shape": {
+                  "kind": "array",
+                  "items": {
+                    "kind": "union",
+                    "of": [
+                      {
+                        "kind": "scalar",
+                        "type": "null"
+                      },
+                      {
+                        "kind": "scalar",
+                        "type": "string",
+                        "values": [
+                          "z",
+                          "é"
+                        ]
+                      }
+                    ]
+                  }
+                },
+                "required": true
+              }
+            },
+            "open": true
+          },
+          "source": "inferred",
+          "sampled": 2
+        },
+        {
+          "name": "items\"\\雪",
+          "source": "validator",
+          "shape": {
+            "kind": "object",
+            "fields": {
+              "_id": {
+                "shape": {
+                  "kind": "scalar",
+                  "type": "objectId"
+                },
+                "required": true
+              },
+              "display.name": {
+                "shape": {
+                  "kind": "union",
+                  "of": [
+                    {
+                      "kind": "scalar",
+                      "type": "string"
+                    },
+                    {
+                      "kind": "scalar",
+                      "type": "null"
+                    }
+                  ]
+                },
+                "required": false
+              },
+              "labels": {
+                "shape": {
+                  "kind": "array",
+                  "items": {
+                    "kind": "object",
+                    "fields": {
+                      "name": {
+                        "shape": {
+                          "kind": "scalar",
+                          "type": "string"
+                        },
+                        "required": true
+                      },
+                      "secret": {
+                        "shape": {
+                          "kind": "scalar",
+                          "type": "string"
+                        },
+                        "required": true
+                      }
+                    },
+                    "open": true
+                  }
+                },
+                "required": true
+              },
+              "secret": {
+                "shape": {
+                  "kind": "scalar",
+                  "type": "binData"
+                },
+                "required": true
+              }
+            },
+            "open": true
+          }
+        },
+        {
+          "name": "preferences",
+          "source": "config",
+          "shape": {
+            "kind": "object",
+            "fields": {
+              "choice": {
+                "shape": {
+                  "kind": "union",
+                  "of": [
+                    {
+                      "kind": "scalar",
+                      "type": "double"
+                    },
+                    {
+                      "kind": "scalar",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "required": false
+              },
+              "count": {
+                "shape": {
+                  "kind": "union",
+                  "of": [
+                    {
+                      "kind": "scalar",
+                      "type": "int"
+                    },
+                    {
+                      "kind": "scalar",
+                      "type": "long"
+                    }
+                  ]
+                },
+                "required": true
+              },
+              "matrix": {
+                "shape": {
+                  "kind": "array",
+                  "items": {
+                    "kind": "array",
+                    "items": {
+                      "kind": "scalar",
+                      "type": "bool"
+                    }
+                  }
+                },
+                "required": false
+              },
+              "opaque": {
+                "shape": {
+                  "kind": "any"
+                },
+                "required": false
+              },
+              "status": {
+                "shape": {
+                  "kind": "union",
+                  "of": [
+                    {
+                      "kind": "scalar",
+                      "type": "string",
+                      "values": [
+                        "in \"review\"",
+                        "new"
+                      ]
+                    },
+                    {
+                      "kind": "scalar",
+                      "type": "null"
+                    }
+                  ]
+                },
+                "required": true
+              }
+            },
+            "open": false
+          }
+        }
+      ]
+    }
+  }
+}

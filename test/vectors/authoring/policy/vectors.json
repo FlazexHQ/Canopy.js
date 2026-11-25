@@ -1,0 +1,1659 @@
+{
+  "sets": [
+    {
+      "name": "constructs",
+      "source": "import { allow, auth, collection, context, createPolicyKit, ctx, now, restrict } from \"canopy.js/policy\"\nimport { ObjectId } from \"canopy.js/protocol\"\n\nconst kit = createPolicyKit<{ roles: \"editor\" }>()\nexport default {\n  collections: [\n    collection(\"privateNotes\"),\n    collection(\"storage.objects\", {\n      policies: [{ name: \"download\", kind: \"permissive\", ops: [\"read\"], roles: [\"anon\"] }],\n    }),\n    kit.collection(\"projects\", {\n      exposed: true,\n      realtime: true,\n      policies: [\n        kit.allow.read(\"editor\", \"authenticated\").where({\n          _id: { $in: ctx(\"projectIds\") },\n          owner: auth(\"sub\", \"objectId\"),\n          code: auth(\"profile.code\", \"string\"),\n          score: { $gte: auth(\"level\", \"number\") },\n          enabled: auth(\"enabled\", \"bool\"),\n          expires: { $gte: auth(\"expiry\", \"date\") },\n          group: auth(\"group\", \"uuid\"),\n        }),\n        restrict.ops([\"read\", \"update\", \"delete\"], \"authenticated\")\n          .where({ deadline: { $gt: now() }, createdAt: { $gte: now(\"-P7D\") } })\n          .named(\"active projects\"),\n        allow.insert(\"authenticated\").check({\n          owner: auth(\"sub\"),\n          tenant: new ObjectId(\"000000000000000000000001\"),\n          createdAt: { $gte: new Date(\"2026-01-01T00:00:00.000Z\") },\n          priority: { $gte: 2 },\n        }),\n        allow.update(\"authenticated\").where({ owner: auth(\"sub\") }).check({ owner: auth(\"sub\") }),\n        allow.delete(\"authenticated\").where({ owner: auth(\"sub\") }),\n      ],\n      fields: {\n        read: { default: { omit: [\"private.notes\"] }, editor: { only: [\"*\"] } },\n        write: { default: { only: [\"title\", \"owner\"] } },\n        update: { default: { only: [] } },\n      },\n      immutable: [\"owner\", \"tenant\"],\n    }),\n  ],\n  contexts: context({\n    projectIds: {\n      from: \"memberships\",\n      where: { subject: auth(\"sub\"), active: true },\n      select: \"projectId\",\n      max: 20,\n      ttl: \"30s\",\n    },\n  }),\n}\n",
+      "document": {
+        "version": 1,
+        "collections": [
+          {
+            "collection": "privateNotes",
+            "exposed": false,
+            "realtime": false,
+            "policies": []
+          },
+          {
+            "collection": "storage.objects",
+            "exposed": false,
+            "realtime": false,
+            "policies": [
+              {
+                "name": "download",
+                "kind": "permissive",
+                "ops": [
+                  "read"
+                ],
+                "roles": [
+                  "anon"
+                ]
+              }
+            ]
+          },
+          {
+            "collection": "projects",
+            "exposed": true,
+            "realtime": true,
+            "policies": [
+              {
+                "name": "permissive read #1",
+                "kind": "permissive",
+                "ops": [
+                  "read"
+                ],
+                "roles": [
+                  "editor",
+                  "authenticated"
+                ],
+                "using": {
+                  "_id": {
+                    "$in": {
+                      "$ctx": "projectIds"
+                    }
+                  },
+                  "owner": {
+                    "$auth": "sub",
+                    "as": "objectId"
+                  },
+                  "code": {
+                    "$auth": "profile.code",
+                    "as": "string"
+                  },
+                  "score": {
+                    "$gte": {
+                      "$auth": "level",
+                      "as": "number"
+                    }
+                  },
+                  "enabled": {
+                    "$auth": "enabled",
+                    "as": "bool"
+                  },
+                  "expires": {
+                    "$gte": {
+                      "$auth": "expiry",
+                      "as": "date"
+                    }
+                  },
+                  "group": {
+                    "$auth": "group",
+                    "as": "uuid"
+                  }
+                }
+              },
+              {
+                "name": "active projects",
+                "kind": "restrictive",
+                "ops": [
+                  "read",
+                  "update",
+                  "delete"
+                ],
+                "roles": [
+                  "authenticated"
+                ],
+                "using": {
+                  "deadline": {
+                    "$gt": {
+                      "$now": {}
+                    }
+                  },
+                  "createdAt": {
+                    "$gte": {
+                      "$now": {
+                        "offset": "-P7D"
+                      }
+                    }
+                  }
+                }
+              },
+              {
+                "name": "permissive insert #3",
+                "kind": "permissive",
+                "ops": [
+                  "insert"
+                ],
+                "roles": [
+                  "authenticated"
+                ],
+                "check": {
+                  "owner": {
+                    "$auth": "sub"
+                  },
+                  "tenant": {
+                    "$oid": "000000000000000000000001"
+                  },
+                  "createdAt": {
+                    "$gte": {
+                      "$date": {
+                        "$numberLong": "1767225600000"
+                      }
+                    }
+                  },
+                  "priority": {
+                    "$gte": {
+                      "$numberInt": "2"
+                    }
+                  }
+                }
+              },
+              {
+                "name": "permissive update #4",
+                "kind": "permissive",
+                "ops": [
+                  "update"
+                ],
+                "roles": [
+                  "authenticated"
+                ],
+                "using": {
+                  "owner": {
+                    "$auth": "sub"
+                  }
+                },
+                "check": {
+                  "owner": {
+                    "$auth": "sub"
+                  }
+                }
+              },
+              {
+                "name": "permissive delete #5",
+                "kind": "permissive",
+                "ops": [
+                  "delete"
+                ],
+                "roles": [
+                  "authenticated"
+                ],
+                "using": {
+                  "owner": {
+                    "$auth": "sub"
+                  }
+                }
+              }
+            ],
+            "fields": {
+              "read": {
+                "default": {
+                  "omit": [
+                    "private.notes"
+                  ]
+                },
+                "editor": {
+                  "only": [
+                    "*"
+                  ]
+                }
+              },
+              "write": {
+                "default": {
+                  "only": [
+                    "title",
+                    "owner"
+                  ]
+                }
+              },
+              "update": {
+                "default": {
+                  "only": []
+                }
+              }
+            },
+            "immutable": [
+              "owner",
+              "tenant"
+            ]
+          }
+        ],
+        "contexts": {
+          "projectIds": {
+            "from": "memberships",
+            "where": {
+              "subject": {
+                "$auth": "sub"
+              },
+              "active": true
+            },
+            "select": "projectId",
+            "max": 20,
+            "ttl": "30s"
+          }
+        }
+      }
+    },
+    {
+      "name": "deploy/dev/policies/notes.ts",
+      "source": "import { allow, collection } from \"canopy.js/policy\"\nexport default { collections: [\ncollection(\"notes\", {\n  exposed: true,\n  realtime: true,\n  policies: [\n    allow.read(\"anon\").where({ public: true }),\n    allow.insert(\"anon\").check({ public: true }),\n    allow.update(\"anon\").where({ public: true }).check({ public: true }),\n    allow.delete(\"anon\").where({ public: true }),\n  ],\n})\n], contexts: {} }\n",
+      "document": {
+        "version": 1,
+        "collections": [
+          {
+            "collection": "notes",
+            "exposed": true,
+            "realtime": true,
+            "policies": [
+              {
+                "name": "permissive read #1",
+                "kind": "permissive",
+                "ops": [
+                  "read"
+                ],
+                "roles": [
+                  "anon"
+                ],
+                "using": {
+                  "public": true
+                }
+              },
+              {
+                "name": "permissive insert #2",
+                "kind": "permissive",
+                "ops": [
+                  "insert"
+                ],
+                "roles": [
+                  "anon"
+                ],
+                "check": {
+                  "public": true
+                }
+              },
+              {
+                "name": "permissive update #3",
+                "kind": "permissive",
+                "ops": [
+                  "update"
+                ],
+                "roles": [
+                  "anon"
+                ],
+                "using": {
+                  "public": true
+                },
+                "check": {
+                  "public": true
+                }
+              },
+              {
+                "name": "permissive delete #4",
+                "kind": "permissive",
+                "ops": [
+                  "delete"
+                ],
+                "roles": [
+                  "anon"
+                ],
+                "using": {
+                  "public": true
+                }
+              }
+            ]
+          }
+        ],
+        "contexts": {}
+      }
+    },
+    {
+      "name": "examples/auth-notes/src/policies.ts",
+      "source": "import { allow, auth, collection } from \"canopy.js/policy\"\nexport default { collections: [\ncollection(\"notes\", {\n  exposed: true,\n  realtime: true,\n  policies: [\n    allow\n      .read(\"authenticated\")\n      .where({ ownerId: auth(\"sub\") })\n      .named(\"read own\"),\n    allow\n      .insert(\"authenticated\")\n      .check({ ownerId: auth(\"sub\") })\n      .named(\"create own\"),\n    allow\n      .update(\"authenticated\")\n      .where({ ownerId: auth(\"sub\") })\n      .check({ ownerId: auth(\"sub\") })\n      .named(\"edit own\"),\n    allow\n      .delete(\"authenticated\")\n      .where({ ownerId: auth(\"sub\") })\n      .named(\"delete own\"),\n  ],\n  fields: { write: { default: { only: [\"text\", \"ownerId\", \"createdAt\"] } } },\n  immutable: [\"ownerId\", \"createdAt\"],\n})\n], contexts: {} }\n",
+      "document": {
+        "version": 1,
+        "collections": [
+          {
+            "collection": "notes",
+            "exposed": true,
+            "realtime": true,
+            "policies": [
+              {
+                "name": "read own",
+                "kind": "permissive",
+                "ops": [
+                  "read"
+                ],
+                "roles": [
+                  "authenticated"
+                ],
+                "using": {
+                  "ownerId": {
+                    "$auth": "sub"
+                  }
+                }
+              },
+              {
+                "name": "create own",
+                "kind": "permissive",
+                "ops": [
+                  "insert"
+                ],
+                "roles": [
+                  "authenticated"
+                ],
+                "check": {
+                  "ownerId": {
+                    "$auth": "sub"
+                  }
+                }
+              },
+              {
+                "name": "edit own",
+                "kind": "permissive",
+                "ops": [
+                  "update"
+                ],
+                "roles": [
+                  "authenticated"
+                ],
+                "using": {
+                  "ownerId": {
+                    "$auth": "sub"
+                  }
+                },
+                "check": {
+                  "ownerId": {
+                    "$auth": "sub"
+                  }
+                }
+              },
+              {
+                "name": "delete own",
+                "kind": "permissive",
+                "ops": [
+                  "delete"
+                ],
+                "roles": [
+                  "authenticated"
+                ],
+                "using": {
+                  "ownerId": {
+                    "$auth": "sub"
+                  }
+                }
+              }
+            ],
+            "fields": {
+              "write": {
+                "default": {
+                  "only": [
+                    "text",
+                    "ownerId",
+                    "createdAt"
+                  ]
+                }
+              }
+            },
+            "immutable": [
+              "ownerId",
+              "createdAt"
+            ]
+          }
+        ],
+        "contexts": {}
+      }
+    },
+    {
+      "name": "examples/express-dropin/canopy/policies/tickets.ts",
+      "source": "import { allow, auth, collection } from \"canopy.js/policy\"\nexport default { collections: [\ncollection(\"tickets\", {\n  exposed: true,\n  realtime: true,\n  policies: [\n    allow\n      .read(\"authenticated\")\n      .where({ ownerId: auth(\"sub\") })\n      .named(\"customers read their own tickets\"),\n    allow.read(\"support\").named(\"support reads every ticket\"),\n  ],\n  fields: {\n    read: {\n      default: { omit: [\"internalNotes\"] },\n      support: { only: [\"*\"] },\n    },\n  },\n})\n], contexts: {} }\n",
+      "document": {
+        "version": 1,
+        "collections": [
+          {
+            "collection": "tickets",
+            "exposed": true,
+            "realtime": true,
+            "policies": [
+              {
+                "name": "customers read their own tickets",
+                "kind": "permissive",
+                "ops": [
+                  "read"
+                ],
+                "roles": [
+                  "authenticated"
+                ],
+                "using": {
+                  "ownerId": {
+                    "$auth": "sub"
+                  }
+                }
+              },
+              {
+                "name": "support reads every ticket",
+                "kind": "permissive",
+                "ops": [
+                  "read"
+                ],
+                "roles": [
+                  "support"
+                ]
+              }
+            ],
+            "fields": {
+              "read": {
+                "default": {
+                  "omit": [
+                    "internalNotes"
+                  ]
+                },
+                "support": {
+                  "only": [
+                    "*"
+                  ]
+                }
+              }
+            }
+          }
+        ],
+        "contexts": {}
+      }
+    },
+    {
+      "name": "examples/graphql-vue/src/policies.ts",
+      "source": "import { allow, auth, collection } from \"canopy.js/policy\"\nexport default { collections: [\ncollection(\"topics\", {\n  exposed: true,\n  policies: [allow.read(\"authenticated\").named(\"read topics\")],\n}),\ncollection(\"posts\", {\n  exposed: true,\n  realtime: true,\n  policies: [\n    allow.read(\"authenticated\").named(\"read posts\"),\n    allow\n      .insert(\"authenticated\")\n      .check({ ownerId: auth(\"sub\") })\n      .named(\"create own\"),\n    allow\n      .delete(\"authenticated\")\n      .where({ ownerId: auth(\"sub\") })\n      .named(\"delete own\"),\n  ],\n  fields: { write: { default: { only: [\"title\", \"topicId\", \"ownerId\"] } } },\n  immutable: [\"ownerId\", \"topicId\"],\n})\n], contexts: {} }\n",
+      "document": {
+        "version": 1,
+        "collections": [
+          {
+            "collection": "topics",
+            "exposed": true,
+            "realtime": false,
+            "policies": [
+              {
+                "name": "read topics",
+                "kind": "permissive",
+                "ops": [
+                  "read"
+                ],
+                "roles": [
+                  "authenticated"
+                ]
+              }
+            ]
+          },
+          {
+            "collection": "posts",
+            "exposed": true,
+            "realtime": true,
+            "policies": [
+              {
+                "name": "read posts",
+                "kind": "permissive",
+                "ops": [
+                  "read"
+                ],
+                "roles": [
+                  "authenticated"
+                ]
+              },
+              {
+                "name": "create own",
+                "kind": "permissive",
+                "ops": [
+                  "insert"
+                ],
+                "roles": [
+                  "authenticated"
+                ],
+                "check": {
+                  "ownerId": {
+                    "$auth": "sub"
+                  }
+                }
+              },
+              {
+                "name": "delete own",
+                "kind": "permissive",
+                "ops": [
+                  "delete"
+                ],
+                "roles": [
+                  "authenticated"
+                ],
+                "using": {
+                  "ownerId": {
+                    "$auth": "sub"
+                  }
+                }
+              }
+            ],
+            "fields": {
+              "write": {
+                "default": {
+                  "only": [
+                    "title",
+                    "topicId",
+                    "ownerId"
+                  ]
+                }
+              }
+            },
+            "immutable": [
+              "ownerId",
+              "topicId"
+            ]
+          }
+        ],
+        "contexts": {}
+      }
+    },
+    {
+      "name": "examples/next-ssr/canopy/server.ts",
+      "source": "import { allow, collection } from \"canopy.js/policy\"\nexport default { collections: [\ncollection(\"articles\", {\n  exposed: true,\n  realtime: true,\n  policies: [allow.read(\"anon\", \"authenticated\").where({ published: true }).named(\"published\")],\n})\n], contexts: {} }\n",
+      "document": {
+        "version": 1,
+        "collections": [
+          {
+            "collection": "articles",
+            "exposed": true,
+            "realtime": true,
+            "policies": [
+              {
+                "name": "published",
+                "kind": "permissive",
+                "ops": [
+                  "read"
+                ],
+                "roles": [
+                  "anon",
+                  "authenticated"
+                ],
+                "using": {
+                  "published": true
+                }
+              }
+            ]
+          }
+        ],
+        "contexts": {}
+      }
+    },
+    {
+      "name": "examples/todo-react/src/policies.ts",
+      "source": "import { allow, auth, collection } from \"canopy.js/policy\"\nconst visible = { $or: [{ shared: true }, { ownerId: auth(\"sub\") }] }\nexport default { collections: [\ncollection(\"todos\", {\n  exposed: true,\n  realtime: true,\n  policies: [\n    allow.read(\"authenticated\").where(visible),\n    allow.insert(\"authenticated\").check({ ownerId: auth(\"sub\") }),\n    allow.update(\"authenticated\").where(visible).check(visible),\n    allow.delete(\"authenticated\").where({ ownerId: auth(\"sub\") }),\n  ],\n})\n], contexts: {} }\n",
+      "document": {
+        "version": 1,
+        "collections": [
+          {
+            "collection": "todos",
+            "exposed": true,
+            "realtime": true,
+            "policies": [
+              {
+                "name": "permissive read #1",
+                "kind": "permissive",
+                "ops": [
+                  "read"
+                ],
+                "roles": [
+                  "authenticated"
+                ],
+                "using": {
+                  "$or": [
+                    {
+                      "shared": true
+                    },
+                    {
+                      "ownerId": {
+                        "$auth": "sub"
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                "name": "permissive insert #2",
+                "kind": "permissive",
+                "ops": [
+                  "insert"
+                ],
+                "roles": [
+                  "authenticated"
+                ],
+                "check": {
+                  "ownerId": {
+                    "$auth": "sub"
+                  }
+                }
+              },
+              {
+                "name": "permissive update #3",
+                "kind": "permissive",
+                "ops": [
+                  "update"
+                ],
+                "roles": [
+                  "authenticated"
+                ],
+                "using": {
+                  "$or": [
+                    {
+                      "shared": true
+                    },
+                    {
+                      "ownerId": {
+                        "$auth": "sub"
+                      }
+                    }
+                  ]
+                },
+                "check": {
+                  "$or": [
+                    {
+                      "shared": true
+                    },
+                    {
+                      "ownerId": {
+                        "$auth": "sub"
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                "name": "permissive delete #4",
+                "kind": "permissive",
+                "ops": [
+                  "delete"
+                ],
+                "roles": [
+                  "authenticated"
+                ],
+                "using": {
+                  "ownerId": {
+                    "$auth": "sub"
+                  }
+                }
+              }
+            ]
+          }
+        ],
+        "contexts": {}
+      }
+    },
+    {
+      "name": "packages/sdk-e2e/test/auth.e2e.test.ts",
+      "source": "import { allow, auth, collection } from \"canopy.js/policy\"\nexport default { collections: [\ncollection(\"notes\", {\n  exposed: true,\n  realtime: true,\n  policies: [allow.read(\"authenticated\").where({ ownerId: auth(\"sub\") })],\n})\n], contexts: {} }\n",
+      "document": {
+        "version": 1,
+        "collections": [
+          {
+            "collection": "notes",
+            "exposed": true,
+            "realtime": true,
+            "policies": [
+              {
+                "name": "permissive read #1",
+                "kind": "permissive",
+                "ops": [
+                  "read"
+                ],
+                "roles": [
+                  "authenticated"
+                ],
+                "using": {
+                  "ownerId": {
+                    "$auth": "sub"
+                  }
+                }
+              }
+            ]
+          }
+        ],
+        "contexts": {}
+      }
+    },
+    {
+      "name": "packages/sdk-e2e/test/fallback.e2e.test.ts",
+      "source": "import { allow, auth, collection } from \"canopy.js/policy\"\nexport default { collections: [\ncollection(\"todos\", {\n  exposed: true,\n  realtime: true,\n  policies: [\n    allow.read(\"authenticated\").where({ ownerId: auth(\"sub\") }),\n    allow.insert(\"authenticated\").check({ ownerId: auth(\"sub\") }),\n    allow\n      .update(\"authenticated\")\n      .where({ ownerId: auth(\"sub\") })\n      .check({ ownerId: auth(\"sub\") }),\n    allow.delete(\"authenticated\").where({ ownerId: auth(\"sub\") }),\n  ],\n})\n], contexts: {} }\n",
+      "document": {
+        "version": 1,
+        "collections": [
+          {
+            "collection": "todos",
+            "exposed": true,
+            "realtime": true,
+            "policies": [
+              {
+                "name": "permissive read #1",
+                "kind": "permissive",
+                "ops": [
+                  "read"
+                ],
+                "roles": [
+                  "authenticated"
+                ],
+                "using": {
+                  "ownerId": {
+                    "$auth": "sub"
+                  }
+                }
+              },
+              {
+                "name": "permissive insert #2",
+                "kind": "permissive",
+                "ops": [
+                  "insert"
+                ],
+                "roles": [
+                  "authenticated"
+                ],
+                "check": {
+                  "ownerId": {
+                    "$auth": "sub"
+                  }
+                }
+              },
+              {
+                "name": "permissive update #3",
+                "kind": "permissive",
+                "ops": [
+                  "update"
+                ],
+                "roles": [
+                  "authenticated"
+                ],
+                "using": {
+                  "ownerId": {
+                    "$auth": "sub"
+                  }
+                },
+                "check": {
+                  "ownerId": {
+                    "$auth": "sub"
+                  }
+                }
+              },
+              {
+                "name": "permissive delete #4",
+                "kind": "permissive",
+                "ops": [
+                  "delete"
+                ],
+                "roles": [
+                  "authenticated"
+                ],
+                "using": {
+                  "ownerId": {
+                    "$auth": "sub"
+                  }
+                }
+              }
+            ]
+          }
+        ],
+        "contexts": {}
+      }
+    },
+    {
+      "name": "packages/sdk-e2e/test/mutations.e2e.test.ts",
+      "source": "import { allow, auth, collection } from \"canopy.js/policy\"\nexport default { collections: [\ncollection(\"todos\", {\n  exposed: true,\n  realtime: true,\n  policies: [\n    allow.read(\"authenticated\").where({ ownerId: auth(\"sub\") }),\n    allow.insert(\"authenticated\").check({ ownerId: auth(\"sub\") }),\n    allow\n      .update(\"authenticated\")\n      .where({ ownerId: auth(\"sub\") })\n      .check({ ownerId: auth(\"sub\") }),\n    allow.delete(\"authenticated\").where({ ownerId: auth(\"sub\") }),\n  ],\n})\n], contexts: {} }\n",
+      "document": {
+        "version": 1,
+        "collections": [
+          {
+            "collection": "todos",
+            "exposed": true,
+            "realtime": true,
+            "policies": [
+              {
+                "name": "permissive read #1",
+                "kind": "permissive",
+                "ops": [
+                  "read"
+                ],
+                "roles": [
+                  "authenticated"
+                ],
+                "using": {
+                  "ownerId": {
+                    "$auth": "sub"
+                  }
+                }
+              },
+              {
+                "name": "permissive insert #2",
+                "kind": "permissive",
+                "ops": [
+                  "insert"
+                ],
+                "roles": [
+                  "authenticated"
+                ],
+                "check": {
+                  "ownerId": {
+                    "$auth": "sub"
+                  }
+                }
+              },
+              {
+                "name": "permissive update #3",
+                "kind": "permissive",
+                "ops": [
+                  "update"
+                ],
+                "roles": [
+                  "authenticated"
+                ],
+                "using": {
+                  "ownerId": {
+                    "$auth": "sub"
+                  }
+                },
+                "check": {
+                  "ownerId": {
+                    "$auth": "sub"
+                  }
+                }
+              },
+              {
+                "name": "permissive delete #4",
+                "kind": "permissive",
+                "ops": [
+                  "delete"
+                ],
+                "roles": [
+                  "authenticated"
+                ],
+                "using": {
+                  "ownerId": {
+                    "$auth": "sub"
+                  }
+                }
+              }
+            ]
+          }
+        ],
+        "contexts": {}
+      }
+    },
+    {
+      "name": "packages/sdk-e2e/test/offline.e2e.test.ts",
+      "source": "import { allow, auth, collection } from \"canopy.js/policy\"\nexport default { collections: [\ncollection(\"todos\", {\n  exposed: true,\n  realtime: true,\n  policies: [\n    allow.read(\"authenticated\").where({ ownerId: auth(\"sub\") }),\n    allow.insert(\"authenticated\").check({ ownerId: auth(\"sub\") }),\n    allow\n      .update(\"authenticated\")\n      .where({ ownerId: auth(\"sub\") })\n      .check({ ownerId: auth(\"sub\") }),\n    allow.delete(\"authenticated\").where({ ownerId: auth(\"sub\") }),\n  ],\n})\n], contexts: {} }\n",
+      "document": {
+        "version": 1,
+        "collections": [
+          {
+            "collection": "todos",
+            "exposed": true,
+            "realtime": true,
+            "policies": [
+              {
+                "name": "permissive read #1",
+                "kind": "permissive",
+                "ops": [
+                  "read"
+                ],
+                "roles": [
+                  "authenticated"
+                ],
+                "using": {
+                  "ownerId": {
+                    "$auth": "sub"
+                  }
+                }
+              },
+              {
+                "name": "permissive insert #2",
+                "kind": "permissive",
+                "ops": [
+                  "insert"
+                ],
+                "roles": [
+                  "authenticated"
+                ],
+                "check": {
+                  "ownerId": {
+                    "$auth": "sub"
+                  }
+                }
+              },
+              {
+                "name": "permissive update #3",
+                "kind": "permissive",
+                "ops": [
+                  "update"
+                ],
+                "roles": [
+                  "authenticated"
+                ],
+                "using": {
+                  "ownerId": {
+                    "$auth": "sub"
+                  }
+                },
+                "check": {
+                  "ownerId": {
+                    "$auth": "sub"
+                  }
+                }
+              },
+              {
+                "name": "permissive delete #4",
+                "kind": "permissive",
+                "ops": [
+                  "delete"
+                ],
+                "roles": [
+                  "authenticated"
+                ],
+                "using": {
+                  "ownerId": {
+                    "$auth": "sub"
+                  }
+                }
+              }
+            ]
+          }
+        ],
+        "contexts": {}
+      }
+    },
+    {
+      "name": "packages/sdk-e2e/test/rest-writes.e2e.test.ts",
+      "source": "import { allow, auth, collection } from \"canopy.js/policy\"\nexport default { collections: [\ncollection(\"notes\", {\n  exposed: true,\n  realtime: true,\n  policies: [\n    allow.read(\"authenticated\").where({ ownerId: auth(\"sub\") }),\n    allow.insert(\"authenticated\").check({ ownerId: auth(\"sub\") }),\n    allow\n      .update(\"authenticated\")\n      .where({ ownerId: auth(\"sub\") })\n      .check({ ownerId: auth(\"sub\") }),\n    allow.delete(\"authenticated\").where({ ownerId: auth(\"sub\") }),\n  ],\n})\n], contexts: {} }\n",
+      "document": {
+        "version": 1,
+        "collections": [
+          {
+            "collection": "notes",
+            "exposed": true,
+            "realtime": true,
+            "policies": [
+              {
+                "name": "permissive read #1",
+                "kind": "permissive",
+                "ops": [
+                  "read"
+                ],
+                "roles": [
+                  "authenticated"
+                ],
+                "using": {
+                  "ownerId": {
+                    "$auth": "sub"
+                  }
+                }
+              },
+              {
+                "name": "permissive insert #2",
+                "kind": "permissive",
+                "ops": [
+                  "insert"
+                ],
+                "roles": [
+                  "authenticated"
+                ],
+                "check": {
+                  "ownerId": {
+                    "$auth": "sub"
+                  }
+                }
+              },
+              {
+                "name": "permissive update #3",
+                "kind": "permissive",
+                "ops": [
+                  "update"
+                ],
+                "roles": [
+                  "authenticated"
+                ],
+                "using": {
+                  "ownerId": {
+                    "$auth": "sub"
+                  }
+                },
+                "check": {
+                  "ownerId": {
+                    "$auth": "sub"
+                  }
+                }
+              },
+              {
+                "name": "permissive delete #4",
+                "kind": "permissive",
+                "ops": [
+                  "delete"
+                ],
+                "roles": [
+                  "authenticated"
+                ],
+                "using": {
+                  "ownerId": {
+                    "$auth": "sub"
+                  }
+                }
+              }
+            ]
+          }
+        ],
+        "contexts": {}
+      }
+    },
+    {
+      "name": "packages/sdk-e2e/test/rest.e2e.test.ts",
+      "source": "import { allow, auth, collection } from \"canopy.js/policy\"\nexport default { collections: [\ncollection(\"items\", {\n  exposed: true,\n  realtime: true,\n  policies: [allow.read(\"authenticated\").where({ ownerId: auth(\"sub\") })],\n})\n], contexts: {} }\n",
+      "document": {
+        "version": 1,
+        "collections": [
+          {
+            "collection": "items",
+            "exposed": true,
+            "realtime": true,
+            "policies": [
+              {
+                "name": "permissive read #1",
+                "kind": "permissive",
+                "ops": [
+                  "read"
+                ],
+                "roles": [
+                  "authenticated"
+                ],
+                "using": {
+                  "ownerId": {
+                    "$auth": "sub"
+                  }
+                }
+              }
+            ]
+          }
+        ],
+        "contexts": {}
+      }
+    },
+    {
+      "name": "packages/sdk-e2e/test/sharded.e2e.test.ts",
+      "source": "import { allow, auth, collection } from \"canopy.js/policy\"\nexport default { collections: [\ncollection(\"orders\", {\n  exposed: true,\n  realtime: true,\n  policies: [\n    allow.read(\"authenticated\").where({ ownerId: auth(\"sub\") }),\n    allow.insert(\"authenticated\").check({ ownerId: auth(\"sub\") }),\n    allow\n      .update(\"authenticated\")\n      .where({ ownerId: auth(\"sub\") })\n      .check({ ownerId: auth(\"sub\") }),\n  ],\n})\n], contexts: {} }\n",
+      "document": {
+        "version": 1,
+        "collections": [
+          {
+            "collection": "orders",
+            "exposed": true,
+            "realtime": true,
+            "policies": [
+              {
+                "name": "permissive read #1",
+                "kind": "permissive",
+                "ops": [
+                  "read"
+                ],
+                "roles": [
+                  "authenticated"
+                ],
+                "using": {
+                  "ownerId": {
+                    "$auth": "sub"
+                  }
+                }
+              },
+              {
+                "name": "permissive insert #2",
+                "kind": "permissive",
+                "ops": [
+                  "insert"
+                ],
+                "roles": [
+                  "authenticated"
+                ],
+                "check": {
+                  "ownerId": {
+                    "$auth": "sub"
+                  }
+                }
+              },
+              {
+                "name": "permissive update #3",
+                "kind": "permissive",
+                "ops": [
+                  "update"
+                ],
+                "roles": [
+                  "authenticated"
+                ],
+                "using": {
+                  "ownerId": {
+                    "$auth": "sub"
+                  }
+                },
+                "check": {
+                  "ownerId": {
+                    "$auth": "sub"
+                  }
+                }
+              }
+            ]
+          }
+        ],
+        "contexts": {}
+      }
+    },
+    {
+      "name": "packages/sdk-e2e/test/split-roles.e2e.test.ts",
+      "source": "import { allow, auth, collection } from \"canopy.js/policy\"\nexport default { collections: [\ncollection(\"notes\", {\n  exposed: true,\n  realtime: true,\n  policies: [\n    allow.read(\"authenticated\").where({ ownerId: auth(\"sub\") }),\n    allow.insert(\"authenticated\").check({ ownerId: auth(\"sub\") }),\n    allow\n      .update(\"authenticated\")\n      .where({ ownerId: auth(\"sub\") })\n      .check({ ownerId: auth(\"sub\") }),\n  ],\n})\n], contexts: {} }\n",
+      "document": {
+        "version": 1,
+        "collections": [
+          {
+            "collection": "notes",
+            "exposed": true,
+            "realtime": true,
+            "policies": [
+              {
+                "name": "permissive read #1",
+                "kind": "permissive",
+                "ops": [
+                  "read"
+                ],
+                "roles": [
+                  "authenticated"
+                ],
+                "using": {
+                  "ownerId": {
+                    "$auth": "sub"
+                  }
+                }
+              },
+              {
+                "name": "permissive insert #2",
+                "kind": "permissive",
+                "ops": [
+                  "insert"
+                ],
+                "roles": [
+                  "authenticated"
+                ],
+                "check": {
+                  "ownerId": {
+                    "$auth": "sub"
+                  }
+                }
+              },
+              {
+                "name": "permissive update #3",
+                "kind": "permissive",
+                "ops": [
+                  "update"
+                ],
+                "roles": [
+                  "authenticated"
+                ],
+                "using": {
+                  "ownerId": {
+                    "$auth": "sub"
+                  }
+                },
+                "check": {
+                  "ownerId": {
+                    "$auth": "sub"
+                  }
+                }
+              }
+            ]
+          }
+        ],
+        "contexts": {}
+      }
+    }
+  ],
+  "suites": [
+    {
+      "name": "actor helpers",
+      "policy": "deploy/dev/policies/notes.ts",
+      "source": "import { as, describePolicies } from \"canopy.js/policy/testing\"\nexport default describePolicies(\"notes\", ({ doc, expect }) => {\n  const publicNote = doc({ _id: \"a\", public: true, text: \"hello\" })\n  const privateNote = doc({ _id: \"b\", public: false })\n  expect(as.anon()).can.read(publicNote).withFields([\"text\"]).withoutFields([\"secret\"])\n  expect(as.anon()).cannot.read(privateNote)\n  expect(as.anon()).can.insert(publicNote)\n  expect(as.anon()).cannot.update(publicNote, { $set: { public: false } })\n  expect(as.anon()).can.delete(publicNote)\n  expect(as.service()).can.read(privateNote)\n  expect(as.user({ sub: \"alice\", org: \"canopy\" }, { roles: [\"editor\"], ctx: { projects: [\"p1\"] } }))\n    .cannot.read(publicNote)\n}, \"local notes\")\n",
+      "documents": [
+        {
+          "version": 1,
+          "suite": "local notes",
+          "collection": "notes",
+          "action": "read",
+          "expected": true,
+          "withFields": [
+            "text"
+          ],
+          "withoutFields": [
+            "secret"
+          ],
+          "actor": {
+            "label": "anon",
+            "roles": [
+              "anon"
+            ],
+            "claims": null
+          },
+          "doc": {
+            "_id": "a",
+            "public": true,
+            "text": "hello"
+          }
+        },
+        {
+          "version": 1,
+          "suite": "local notes",
+          "collection": "notes",
+          "action": "read",
+          "expected": false,
+          "actor": {
+            "label": "anon",
+            "roles": [
+              "anon"
+            ],
+            "claims": null
+          },
+          "doc": {
+            "_id": "b",
+            "public": false
+          }
+        },
+        {
+          "version": 1,
+          "suite": "local notes",
+          "collection": "notes",
+          "action": "insert",
+          "expected": true,
+          "actor": {
+            "label": "anon",
+            "roles": [
+              "anon"
+            ],
+            "claims": null
+          },
+          "doc": {
+            "_id": "a",
+            "public": true,
+            "text": "hello"
+          }
+        },
+        {
+          "version": 1,
+          "suite": "local notes",
+          "collection": "notes",
+          "action": "update",
+          "expected": false,
+          "actor": {
+            "label": "anon",
+            "roles": [
+              "anon"
+            ],
+            "claims": null
+          },
+          "doc": {
+            "_id": "a",
+            "public": true,
+            "text": "hello"
+          },
+          "update": {
+            "$set": {
+              "public": false
+            }
+          }
+        },
+        {
+          "version": 1,
+          "suite": "local notes",
+          "collection": "notes",
+          "action": "delete",
+          "expected": true,
+          "actor": {
+            "label": "anon",
+            "roles": [
+              "anon"
+            ],
+            "claims": null
+          },
+          "doc": {
+            "_id": "a",
+            "public": true,
+            "text": "hello"
+          }
+        },
+        {
+          "version": 1,
+          "suite": "local notes",
+          "collection": "notes",
+          "action": "read",
+          "expected": true,
+          "actor": {
+            "label": "service",
+            "roles": [
+              "service"
+            ],
+            "claims": null
+          },
+          "doc": {
+            "_id": "b",
+            "public": false
+          }
+        },
+        {
+          "version": 1,
+          "suite": "local notes",
+          "collection": "notes",
+          "action": "read",
+          "expected": false,
+          "actor": {
+            "label": "alice",
+            "roles": [
+              "authenticated",
+              "editor"
+            ],
+            "claims": {
+              "sub": "alice",
+              "org": "canopy"
+            },
+            "ctx": {
+              "projects": [
+                "p1"
+              ]
+            }
+          },
+          "doc": {
+            "_id": "a",
+            "public": true,
+            "text": "hello"
+          }
+        }
+      ]
+    },
+    {
+      "name": "examples/express-dropin/canopy/policies/tickets.test.ts",
+      "policy": "examples/express-dropin/canopy/policies/tickets.ts",
+      "source": "import { as, describePolicies } from \"canopy.js/policy/testing\"\n\nexport default describePolicies(\"tickets\", ({ doc, expect }) => {\n  const alice = as.user({ sub: \"dev|alice\" })\n  const bob = as.user({ sub: \"dev|bob\" })\n  const sam = as.user({ sub: \"dev|sam\" }, { roles: [\"support\"] })\n  const ticket = doc({\n    _id: \"t1\",\n    title: \"VPN drops every hour\",\n    ownerId: \"dev|alice\",\n    ownerName: \"Alice\",\n    status: \"open\",\n    internalNotes: \"Known issue with the old client\",\n  })\n\n  expect(alice).can.read(ticket).withoutFields([\"internalNotes\"])\n  expect(bob).cannot.read(ticket)\n  expect(sam).can.read(ticket).withFields([\"internalNotes\"])\n  expect(as.anon()).cannot.read(ticket)\n  expect(as.user({ email: \"no-subject@example.com\" })).cannot.read(ticket)\n  expect(alice).cannot.update(ticket, { $set: { status: \"closed\" } })\n  expect(sam).cannot.delete(ticket)\n  expect(alice).cannot.insert({ _id: \"t2\", title: \"New\", ownerId: \"dev|alice\" })\n})\n",
+      "documents": [
+        {
+          "version": 1,
+          "suite": "tickets",
+          "collection": "tickets",
+          "action": "read",
+          "expected": true,
+          "withoutFields": [
+            "internalNotes"
+          ],
+          "actor": {
+            "label": "dev|alice",
+            "roles": [
+              "authenticated"
+            ],
+            "claims": {
+              "sub": "dev|alice"
+            }
+          },
+          "doc": {
+            "_id": "t1",
+            "title": "VPN drops every hour",
+            "ownerId": "dev|alice",
+            "ownerName": "Alice",
+            "status": "open",
+            "internalNotes": "Known issue with the old client"
+          }
+        },
+        {
+          "version": 1,
+          "suite": "tickets",
+          "collection": "tickets",
+          "action": "read",
+          "expected": false,
+          "actor": {
+            "label": "dev|bob",
+            "roles": [
+              "authenticated"
+            ],
+            "claims": {
+              "sub": "dev|bob"
+            }
+          },
+          "doc": {
+            "_id": "t1",
+            "title": "VPN drops every hour",
+            "ownerId": "dev|alice",
+            "ownerName": "Alice",
+            "status": "open",
+            "internalNotes": "Known issue with the old client"
+          }
+        },
+        {
+          "version": 1,
+          "suite": "tickets",
+          "collection": "tickets",
+          "action": "read",
+          "expected": true,
+          "withFields": [
+            "internalNotes"
+          ],
+          "actor": {
+            "label": "dev|sam",
+            "roles": [
+              "authenticated",
+              "support"
+            ],
+            "claims": {
+              "sub": "dev|sam"
+            }
+          },
+          "doc": {
+            "_id": "t1",
+            "title": "VPN drops every hour",
+            "ownerId": "dev|alice",
+            "ownerName": "Alice",
+            "status": "open",
+            "internalNotes": "Known issue with the old client"
+          }
+        },
+        {
+          "version": 1,
+          "suite": "tickets",
+          "collection": "tickets",
+          "action": "read",
+          "expected": false,
+          "actor": {
+            "label": "anon",
+            "roles": [
+              "anon"
+            ],
+            "claims": null
+          },
+          "doc": {
+            "_id": "t1",
+            "title": "VPN drops every hour",
+            "ownerId": "dev|alice",
+            "ownerName": "Alice",
+            "status": "open",
+            "internalNotes": "Known issue with the old client"
+          }
+        },
+        {
+          "version": 1,
+          "suite": "tickets",
+          "collection": "tickets",
+          "action": "read",
+          "expected": false,
+          "actor": {
+            "label": "user",
+            "roles": [
+              "authenticated"
+            ],
+            "claims": {
+              "email": "no-subject@example.com"
+            }
+          },
+          "doc": {
+            "_id": "t1",
+            "title": "VPN drops every hour",
+            "ownerId": "dev|alice",
+            "ownerName": "Alice",
+            "status": "open",
+            "internalNotes": "Known issue with the old client"
+          }
+        },
+        {
+          "version": 1,
+          "suite": "tickets",
+          "collection": "tickets",
+          "action": "update",
+          "expected": false,
+          "actor": {
+            "label": "dev|alice",
+            "roles": [
+              "authenticated"
+            ],
+            "claims": {
+              "sub": "dev|alice"
+            }
+          },
+          "doc": {
+            "_id": "t1",
+            "title": "VPN drops every hour",
+            "ownerId": "dev|alice",
+            "ownerName": "Alice",
+            "status": "open",
+            "internalNotes": "Known issue with the old client"
+          },
+          "update": {
+            "$set": {
+              "status": "closed"
+            }
+          }
+        },
+        {
+          "version": 1,
+          "suite": "tickets",
+          "collection": "tickets",
+          "action": "delete",
+          "expected": false,
+          "actor": {
+            "label": "dev|sam",
+            "roles": [
+              "authenticated",
+              "support"
+            ],
+            "claims": {
+              "sub": "dev|sam"
+            }
+          },
+          "doc": {
+            "_id": "t1",
+            "title": "VPN drops every hour",
+            "ownerId": "dev|alice",
+            "ownerName": "Alice",
+            "status": "open",
+            "internalNotes": "Known issue with the old client"
+          }
+        },
+        {
+          "version": 1,
+          "suite": "tickets",
+          "collection": "tickets",
+          "action": "insert",
+          "expected": false,
+          "actor": {
+            "label": "dev|alice",
+            "roles": [
+              "authenticated"
+            ],
+            "claims": {
+              "sub": "dev|alice"
+            }
+          },
+          "doc": {
+            "_id": "t2",
+            "title": "New",
+            "ownerId": "dev|alice"
+          }
+        }
+      ]
+    }
+  ],
+  "filterTests": [
+    {
+      "name": "filter input",
+      "source": "import { as, describePolicies } from \"canopy.js/policy/testing\"\nexport default {\n  suite: \"notes filters\",\n  collection: \"notes\",\n  actor: as.anon(),\n  action: \"read\",\n  filter: { public: true, priority: { $gte: 2 } },\n  expected: true,\n}\n",
+      "document": {
+        "version": 1,
+        "suite": "notes filters",
+        "collection": "notes",
+        "action": "read",
+        "expected": true,
+        "actor": {
+          "label": "anon",
+          "roles": [
+            "anon"
+          ],
+          "claims": null
+        },
+        "filter": {
+          "public": true,
+          "priority": {
+            "$gte": {
+              "$numberInt": "2"
+            }
+          }
+        }
+      }
+    }
+  ],
+  "invalid": [
+    {
+      "name": "service policy",
+      "kind": "set",
+      "source": "import { allow, auth, collection, context, createPolicyKit, ctx, now, restrict } from \"canopy.js/policy\"\nexport default { collections: [collection(\"notes\", { policies: [allow.read(\"service\")] })], contexts: {} }\n",
+      "error": {
+        "code": "CANOPY_INVALID_QUERY",
+        "path": "/collections/0/policies/0/roles/0"
+      }
+    },
+    {
+      "name": "ambiguous field rule",
+      "kind": "set",
+      "source": "import { allow, auth, collection, context, createPolicyKit, ctx, now, restrict } from \"canopy.js/policy\"\nexport default {\n  collections: [collection(\"notes\", { fields: { read: { default: { only: [\"text\"], omit: [\"secret\"] } } } })],\n  contexts: {},\n}\n",
+      "error": {
+        "code": "CANOPY_INVALID_QUERY",
+        "path": "/collections/0/fields/read/default"
+      }
+    },
+    {
+      "name": "zero context max",
+      "kind": "set",
+      "source": "import { allow, auth, collection, context, createPolicyKit, ctx, now, restrict } from \"canopy.js/policy\"\nexport default {\n  collections: [],\n  contexts: context({ projectIds: { from: \"memberships\", where: { subject: auth(\"sub\") }, select: \"projectId\", max: 0, ttl: \"1m\" } }),\n}\n",
+      "error": {
+        "code": "CANOPY_INVALID_QUERY",
+        "path": "/contexts/projectIds/max"
+      }
+    },
+    {
+      "name": "invalid claim path",
+      "kind": "set",
+      "source": "import { allow, auth, collection, context, createPolicyKit, ctx, now, restrict } from \"canopy.js/policy\"\nexport default {\n  collections: [collection(\"notes\", { policies: [allow.read(\"anon\").where({ owner: auth(\"bad..claim\") })] })],\n  contexts: {},\n}\n",
+      "error": {
+        "code": "CANOPY_INVALID_QUERY",
+        "path": "/collections/0/policies/0/using/owner/$auth"
+      }
+    },
+    {
+      "name": "function in clause",
+      "kind": "set",
+      "source": "import { allow, auth, collection, context, createPolicyKit, ctx, now, restrict } from \"canopy.js/policy\"\nexport default {\n  collections: [collection(\"notes\", { policies: [allow.read(\"anon\").where({ owner: () => \"alice\" })] })],\n  contexts: {},\n}\n",
+      "error": {
+        "code": "CANOPY_INVALID_QUERY",
+        "path": "/collections/0/policies/0/using/owner"
+      }
+    },
+    {
+      "name": "custom assertion",
+      "kind": "test",
+      "source": "import { as, describePolicies } from \"canopy.js/policy/testing\"\nconst suite = describePolicies(\"notes\", ({ expect }) => {\n  expect(as.anon()).can.read({ public: true })\n})\nexport default { ...suite.cases[0], assert: () => true }\n",
+      "error": {
+        "code": "CANOPY_INVALID_QUERY",
+        "path": "/assert"
+      }
+    },
+    {
+      "name": "custom assertion descriptor",
+      "kind": "test",
+      "source": "import { as, describePolicies } from \"canopy.js/policy/testing\"\nconst suite = describePolicies(\"notes\", ({ expect }) => {\n  expect(as.anon()).can.read({ public: true })\n})\nexport default { ...suite.cases[0], assert: \"custom\" }\n",
+      "error": {
+        "code": "CANOPY_INVALID_QUERY",
+        "path": "/assert"
+      }
+    }
+  ]
+}

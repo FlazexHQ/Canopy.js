@@ -336,7 +336,7 @@ describe("the client core", () => {
 })
 
 describe("the client sources", () => {
-  it("import no TypeScript implementation of the matcher, query, policy, schema or config", () => {
+  it("import no TypeScript implementation of the matcher, query, policy, schema or config, nor the authoring module", () => {
     const src = fileURLToPath(new URL("../../src/", import.meta.url))
     const owned = ["client", "react", "vue", "svelte", "solid", "tanstack-db", "devtools"]
     const offending: string[] = []
@@ -348,7 +348,12 @@ describe("the client sources", () => {
         if (!entry.isFile() || !/\.(ts|tsx|svelte)$/.test(entry.name)) continue
         const path = join(entry.parentPath, entry.name)
         const text = readFileSync(path, "utf8")
-        if (/core\/(matcher|query|policy|schema|config)\//.test(text)) offending.push(path)
+        if (
+          /core\/(matcher|query|policy|schema|config)\/|\.\.\/(schema|policy|emit)\/|wasm\/authoring/.test(
+            text,
+          )
+        )
+          offending.push(path)
       }
     }
     expect(offending).toEqual([])

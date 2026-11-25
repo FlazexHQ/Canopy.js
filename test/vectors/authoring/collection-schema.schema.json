@@ -1,0 +1,200 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Canopy collection schema",
+  "type": "object",
+  "properties": {
+    "version": {
+      "const": 1
+    },
+    "collections": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/collection"
+      }
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "version",
+    "collections"
+  ],
+  "$defs": {
+    "collection": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^(?!system\\.)[^$\\u0000]+$"
+        },
+        "source": {
+          "enum": [
+            "config",
+            "validator",
+            "inferred"
+          ]
+        },
+        "sampled": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "shape": {
+          "$ref": "#/$defs/object"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "source",
+        "shape"
+      ]
+    },
+    "object": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "const": "object"
+        },
+        "open": {
+          "type": "boolean"
+        },
+        "fields": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "object",
+            "properties": {
+              "required": {
+                "type": "boolean"
+              },
+              "shape": {
+                "$ref": "#/$defs/shape"
+              }
+            },
+            "additionalProperties": false,
+            "required": [
+              "required",
+              "shape"
+            ]
+          }
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "open",
+        "fields"
+      ]
+    },
+    "shape": {
+      "anyOf": [
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "const": "any"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "const": "scalar"
+            },
+            "type": {
+              "const": "string"
+            },
+            "values": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "minItems": 1,
+              "uniqueItems": true
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "type"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "const": "scalar"
+            },
+            "type": {
+              "enum": [
+                "double",
+                "int",
+                "long",
+                "decimal",
+                "bool",
+                "date",
+                "objectId",
+                "binData",
+                "uuid",
+                "null",
+                "timestamp",
+                "regex",
+                "minKey",
+                "maxKey",
+                "javascript"
+              ]
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "type"
+          ]
+        },
+        {
+          "$ref": "#/$defs/object"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "const": "array"
+            },
+            "items": {
+              "$ref": "#/$defs/shape"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "items"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "const": "union"
+            },
+            "of": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/shape"
+              },
+              "minItems": 2
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "of"
+          ]
+        }
+      ]
+    }
+  }
+}

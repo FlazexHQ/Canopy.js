@@ -6,6 +6,6 @@
     "outDir": "../dist",
     "tsBuildInfoFile": "../dist/.universal.tsbuildinfo"
   },
-  "include": ["core", "client"],
+  "include": ["core", "client", "schema", "policy"],
   "exclude": ["core/config"]
 }

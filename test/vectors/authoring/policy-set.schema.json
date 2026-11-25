@@ -1,0 +1,143 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Canopy policy set v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "collections", "contexts"],
+  "properties": {
+    "version": { "const": 1 },
+    "collections": { "type": "array", "items": { "$ref": "#/$defs/collection" } },
+    "contexts": {
+      "type": "object",
+      "propertyNames": { "pattern": "^[A-Za-z_]\\w{0,63}$" },
+      "additionalProperties": { "$ref": "#/$defs/lookup" }
+    }
+  },
+  "$defs": {
+    "collectionName": { "type": "string", "pattern": "^[A-Za-z_][\\w.-]{0,119}$" },
+    "operation": { "enum": ["read", "insert", "update", "delete"] },
+    "paths": { "type": "array", "items": { "type": "string", "minLength": 1, "maxLength": 512 } },
+    "filter": {
+      "type": "object",
+      "description": "A MongoDB filter in canonical Extended JSON. The policy validator checks operators, variable placement and Extended JSON decoding.",
+      "additionalProperties": { "$ref": "#/$defs/filterValue" }
+    },
+    "filterValue": {
+      "type": ["null", "boolean", "number", "string", "array", "object"],
+      "items": { "$ref": "#/$defs/filterValue" },
+      "additionalProperties": { "$ref": "#/$defs/filterValue" },
+      "allOf": [
+        {
+          "if": { "type": "object", "required": ["$auth"] },
+          "then": { "$ref": "#/$defs/authVariable" }
+        },
+        {
+          "if": { "type": "object", "required": ["$ctx"] },
+          "then": { "$ref": "#/$defs/contextVariable" }
+        },
+        {
+          "if": { "type": "object", "required": ["$now"] },
+          "then": { "$ref": "#/$defs/timeVariable" }
+        }
+      ]
+    },
+    "authVariable": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["$auth"],
+      "properties": {
+        "$auth": { "type": "string", "pattern": "^[\\w-]+(?:\\.[\\w-]+)*$" },
+        "as": { "enum": ["objectId", "string", "number", "bool", "date", "uuid"] }
+      }
+    },
+    "contextVariable": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["$ctx"],
+      "properties": {
+        "$ctx": { "type": "string", "pattern": "^[A-Za-z_]\\w{0,63}$" }
+      }
+    },
+    "timeVariable": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["$now"],
+      "properties": {
+        "$now": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": { "offset": { "type": "string" } }
+        }
+      }
+    },
+    "collection": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["collection", "exposed", "realtime", "policies"],
+      "properties": {
+        "collection": { "$ref": "#/$defs/collectionName" },
+        "exposed": { "type": "boolean" },
+        "realtime": { "type": "boolean" },
+        "policies": { "type": "array", "maxItems": 64, "items": { "$ref": "#/$defs/policy" } },
+        "fields": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "read": { "$ref": "#/$defs/fieldRules" },
+            "write": { "$ref": "#/$defs/fieldRules" },
+            "update": { "$ref": "#/$defs/fieldRules" }
+          }
+        },
+        "immutable": { "$ref": "#/$defs/paths" }
+      }
+    },
+    "policy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "kind", "ops", "roles"],
+      "properties": {
+        "name": { "type": "string", "pattern": "\\S" },
+        "kind": { "enum": ["permissive", "restrictive"] },
+        "ops": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/operation" }
+        },
+        "roles": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string", "pattern": "^[\\w:.-]{1,64}$", "not": { "const": "service" } }
+        },
+        "using": { "$ref": "#/$defs/filter" },
+        "check": { "$ref": "#/$defs/filter" }
+      }
+    },
+    "fieldRules": {
+      "type": "object",
+      "propertyNames": { "not": { "const": "service" } },
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "only": { "$ref": "#/$defs/paths" },
+          "omit": { "$ref": "#/$defs/paths" }
+        },
+        "minProperties": 1,
+        "maxProperties": 1
+      }
+    },
+    "lookup": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["from", "where", "select", "max", "ttl"],
+      "properties": {
+        "from": { "$ref": "#/$defs/collectionName" },
+        "where": { "$ref": "#/$defs/filter" },
+        "select": { "type": "string", "minLength": 1, "maxLength": 512 },
+        "max": { "type": "integer", "minimum": 1, "maximum": 100000 },
+        "ttl": { "type": "string", "pattern": "^\\d+[smhd]$" }
+      }
+    }
+  }
+}
