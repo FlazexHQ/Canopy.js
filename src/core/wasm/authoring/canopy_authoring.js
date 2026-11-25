@@ -251,6 +251,58 @@ export class PolicyEngine {
         }
     }
     /**
+     * Applies document and field policies to an aggregation pipeline. The pipeline and request are EJSON
+     * text, and the secured stages are returned as canonical EJSON text. Omitted limits use the defaults.
+     * @param {string} collection
+     * @param {string} pipeline
+     * @param {string} request
+     * @param {boolean} search
+     * @param {number | null} [max_stages]
+     * @param {number | null} [max_sample]
+     * @returns {string}
+     */
+    securePipeline(collection, pipeline, request, search, max_stages, max_sample) {
+        let deferred8_0;
+        let deferred8_1;
+        try {
+            const retptr = wasm.__wbindgen_add_to_stack_pointer(-16) >>> 0;
+            const val4 = +search;
+            const val5 = +(isLikeNone(max_stages) ? Number.MAX_SAFE_INTEGER : (max_stages) >>> 0);
+            const val6 = +(isLikeNone(max_sample) ? Number.MAX_SAFE_INTEGER : (max_sample) >>> 0);
+            let ptr0, len0, ptr1, len1, ptr2, len2;
+            try {
+                ptr0 = passStringToWasm0(collection, wasm.__wbindgen_export, wasm.__wbindgen_export2);
+                len0 = WASM_VECTOR_LEN;
+                ptr1 = passStringToWasm0(pipeline, wasm.__wbindgen_export, wasm.__wbindgen_export2);
+                len1 = WASM_VECTOR_LEN;
+                ptr2 = passStringToWasm0(request, wasm.__wbindgen_export, wasm.__wbindgen_export2);
+                len2 = WASM_VECTOR_LEN;
+            } catch (e) {
+                if (ptr2) { wasm.__wbindgen_export3(ptr2, len2 * 1, 1); }
+                if (ptr1) { wasm.__wbindgen_export3(ptr1, len1 * 1, 1); }
+                if (ptr0) { wasm.__wbindgen_export3(ptr0, len0 * 1, 1); }
+                throw e;
+            }
+            wasm.policyengine_securePipeline(retptr, this.__wbg_ptr, ptr0, len0, ptr1, len1, ptr2, len2, val4, val5, val6);
+            var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
+            var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
+            var r2 = getDataViewMemory0().getInt32(retptr + 4 * 2, true);
+            var r3 = getDataViewMemory0().getInt32(retptr + 4 * 3, true);
+            var ptr7 = r0;
+            var len7 = r1;
+            if (r3) {
+                ptr7 = 0; len7 = 0;
+                throw takeObject(r2);
+            }
+            deferred8_0 = ptr7;
+            deferred8_1 = len7;
+            return getStringFromWasm0(ptr7, len7);
+        } finally {
+            wasm.__wbindgen_add_to_stack_pointer(16);
+            wasm.__wbindgen_export3(deferred8_0, deferred8_1, 1);
+        }
+    }
+    /**
      * The target of an update or delete: `USING(op) AND USING(read)`.
      * @param {string} collection
      * @param {string} op

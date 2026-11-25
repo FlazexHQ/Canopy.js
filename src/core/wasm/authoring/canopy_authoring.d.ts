@@ -41,6 +41,11 @@ export class PolicyEngine {
      */
     readable(collection: string, request: string): any;
     /**
+     * Applies document and field policies to an aggregation pipeline. The pipeline and request are EJSON
+     * text, and the secured stages are returned as canonical EJSON text. Omitted limits use the defaults.
+     */
+    securePipeline(collection: string, pipeline: string, request: string, search: boolean, max_stages?: number | null, max_sample?: number | null): string;
+    /**
      * The target of an update or delete: `USING(op) AND USING(read)`.
      */
     target(collection: string, op: string, request: string): any;
@@ -151,6 +156,7 @@ export interface InitOutput {
     readonly policyengine_hasGrant: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number) => void;
     readonly policyengine_new: (a: number, b: number, c: number, d: number, e: number) => void;
     readonly policyengine_readable: (a: number, b: number, c: number, d: number, e: number, f: number) => void;
+    readonly policyengine_securePipeline: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number, i: number, j: number, k: number) => void;
     readonly policyengine_target: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number) => void;
     readonly policyengine_using: (a: number, b: number, c: number, d: number, e: number, f: number, g: number, h: number) => void;
     readonly policyengine_version: (a: number, b: number) => void;
