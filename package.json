@@ -143,6 +143,8 @@
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
     "sync:wasm": "bun scripts/sync-wasm.ts",
+    "sync:vectors": "bun scripts/sync-vectors.ts",
+    "check:vectors": "bun scripts/sync-vectors.ts --check",
     "check:core-layout": "bun scripts/check-core-layout.ts && bun scripts/sync-wasm.ts --check --manifest-only",
     "check:wasm": "bun scripts/sync-wasm.ts --check",
     "check": "bun run lint && bun run format:check && bun run check:core-layout && bun run check:wasm && bun run typecheck && bun run test",
