@@ -81,7 +81,7 @@ const TRANSPORTS = ["websocket", "sse", "long-poll"] as const
 const ID_TYPES = ["auto", "objectId", "string", "uuid", "number"] as const
 const LOG_LEVELS = ["debug", "info", "warn", "error"] as const
 const ENGINES = ["auto", "ts", "native", "wasm"] as const
-const REALTIME_SERVERS = ["ts", "gateway"] as const
+const REALTIME_SERVERS = ["ts", "gateway", "auto"] as const
 /** The change events a trigger can react to. */
 export const TRIGGER_OPERATIONS = ["insert", "update", "replace", "delete"] as const
 

@@ -145,6 +145,7 @@ export class CanopyError extends Error {
     if (typeof error !== "object" || error === null || !(BRAND in error) || error[BRAND] !== true)
       return false
     // biome-ignore lint/complexity/noThisInStatic: The receiver is the class used by instanceof.
+    // biome-ignore lint/complexity/noUselessThisAlias: The alias gives the receiver its class type.
     const errorClass: typeof CanopyError = this
     if (
       errorClass === CanopyError ||

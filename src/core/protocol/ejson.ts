@@ -248,7 +248,10 @@ function hexToBytes(hex: string): Uint8Array {
   return bytes
 }
 
-/** Encodes values into relaxed EJSON (the `canopy.v1` wire form). */
+/**
+ * Encodes values into relaxed EJSON (the `canopy.v1` wire form). A BSON symbol, the deprecated string type that
+ * MongoDB sorts and compares with strings, is written as a plain string, in both encodings.
+ */
 export function encode(value: unknown): unknown {
   return encodeValue(value, false)
 }
@@ -362,6 +365,11 @@ function encodeBsonValue(value: object, canonical: boolean): unknown {
       return { $minKey: 1 }
     case "MaxKey":
       return { $maxKey: 1 }
+    case "BSONSymbol": {
+      const text: unknown = (value as { value?: unknown }).value
+      if (typeof text !== "string") break
+      return text
+    }
     default:
       break
   }
