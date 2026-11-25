@@ -3,7 +3,6 @@
   "files": [],
   "references": [
     { "path": "src" },
-    { "path": "src/tsconfig.config.json" },
     { "path": "src/tsconfig.emit.json" },
     { "path": "src/tsconfig.web.json" },
     { "path": "src/cli" },

@@ -7,5 +7,5 @@
     "tsBuildInfoFile": "../dist/.emit.tsbuildinfo"
   },
   "include": ["emit"],
-  "references": [{ "path": "./tsconfig.json" }, { "path": "./tsconfig.config.json" }]
+  "references": [{ "path": "./tsconfig.json" }]
 }

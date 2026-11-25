@@ -21,13 +21,11 @@ Canopy (the platform: server, Studio, CLI, Rust core) lives in its own repositor
 
 - `src/client`, `src/react`, `src/vue`, `src/svelte`, `src/solid`, `src/tanstack-db`, `src/devtools`: owned
   here. `src/client/index.ts` is the root entry point.
-- `src/core`: **vendored from Canopy, never edited here.** Canopy owns protocol, matcher, query, policy,
-  config and the schema DSL (its server, Rust core and MongoDB differential tests keep them correct).
-  `bun run sync:core` copies them from `../Canopy` (or `CANOPY_REPO`, or `--from`), rewriting `@canopy/*`
-  imports into relative paths; `bun run check:core` fails when the copy is stale. Change the core in Canopy,
-  then sync.
-- `src/cli`: the server only stack CLI, with its own TypeScript project. It uses the files in
-  `templates/cli`. The Compose template is maintained here, and `sync:core` vendors the Caddyfile from Canopy.
+- `src/core`: protocol support and generated Rust artifacts. Use `bun run sync:wasm` to refresh the
+  artifacts. Client operations use the Rust client and transforms modules, and `canopy.js/emit` uses the
+  Rust authoring module to validate inputs from the config, policy and schema builders.
+- `src/cli`: the server only stack CLI, with its own TypeScript project. Its Compose template and
+  Caddyfile live in `templates/cli`.
 - `test/<module>`: Vitest suites per module; `test/vectors` holds the vendored protocol conformance vectors and
   `test/support/vectors.ts` replays them through the client. Tests import the package by its own name
   (`canopy.js`, `canopy.js/react`); `vitest.config.ts` aliases each name to its source.
@@ -35,19 +33,18 @@ Canopy (the platform: server, Studio, CLI, Rust core) lives in its own repositor
 
 The package exports its sources under the `canopy-js-source` condition (only this repository's tests use it)
 and `dist/` otherwise. TypeScript projects: `src/tsconfig.json` (universal: core and client, with
-`isolatedDeclarations`), `src/tsconfig.config.json` (the vendored config module) and `src/tsconfig.web.json`
+`isolatedDeclarations`) and `src/tsconfig.web.json`
 (the DOM and JSX bindings), plus one project per test folder; `tsc -b` builds them all.
 
 ## Commands
 
 ```bash
 bun install --frozen-lockfile
-bun run check          # lint, format check, core sync check, typecheck and tests
+bun run check          # lint, format check, core layout and artifact checks, typecheck and tests
 bun run build          # tsc -b into dist/
 bun run test           # vitest run
 bun run lint           # biome lint (formatting is bun fmt)
 bun run format         # bun fmt
-bun run sync:core      # vendor the core from ../Canopy
 ```
 
 After changing anything here that Canopy uses, run `bun run build`, then `bun install` in Canopy: Canopy

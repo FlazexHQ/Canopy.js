@@ -1,30 +1,56 @@
-import {
-  type Actor,
-  as,
-  contextOf,
-  evaluateInMemory,
-  memoryBackend,
-  type PolicyAction,
-  type PolicyBackend,
-  type PolicyOutcome,
-  type PolicyTestCase as DocumentTestCase,
-  type PolicySuite as DocumentSuite,
-  type PolicyTestResult as DocumentTestResult,
-  policyCoverage as documentCoverage,
-  runPolicyTests as runDocumentTests,
-} from "../core/policy/testing.ts"
-import type { PolicyEngine } from "../core/policy/engine.ts"
-import type { CollectionName, DocumentOf, Registered } from "../core/policy/typed.ts"
+import { Role } from "./model.ts"
+import type { CollectionName, DocumentOf, Registered } from "./typed.ts"
 
-export {
-  type Actor,
-  as,
-  contextOf,
-  evaluateInMemory,
-  memoryBackend,
-  type PolicyAction,
-  type PolicyBackend,
-  type PolicyOutcome,
+/** Who performs an action in a policy test. */
+export interface Actor {
+  readonly label: string
+  readonly roles: readonly string[]
+  readonly claims: Readonly<Record<string, unknown>> | null
+  readonly ctx?: Readonly<Record<string, unknown>>
+}
+
+/** Builders for actors. */
+export const as: {
+  /** A signed in user with these claims, typed by the project's `Register` declaration. */
+  user(
+    claims: Partial<Registered["claims"]>,
+    options?: { roles?: readonly string[]; ctx?: Readonly<Record<string, unknown>> },
+  ): Actor
+  anon(): Actor
+  service(): Actor
+} = {
+  user(claims, options = {}) {
+    const record = toRecord(claims)
+    const label = typeof record["sub"] === "string" ? record["sub"] : "user"
+    return {
+      label,
+      roles: [Role.Authenticated, ...(options.roles ?? [])],
+      claims: record,
+      ...(options.ctx === undefined ? {} : { ctx: options.ctx }),
+    }
+  },
+  anon() {
+    return { label: "anon", roles: [Role.Anon], claims: null }
+  },
+  service() {
+    return { label: "service", roles: [Role.Service], claims: null }
+  },
+}
+
+/** The actions a policy test can check. */
+export type PolicyAction = "read" | "insert" | "update" | "delete"
+
+/** One declared expectation. */
+interface DocumentTestCase {
+  readonly suite: string
+  readonly collection: string
+  readonly actor: Actor
+  readonly action: PolicyAction
+  readonly doc: Record<string, unknown>
+  readonly update?: Record<string, unknown>
+  readonly expected: boolean
+  readonly withoutFields?: readonly string[]
+  readonly withFields?: readonly string[]
 }
 
 /** A filter given to {@link SuiteHelpers.where}: the case covers every stored document it matches. */
@@ -175,63 +201,4 @@ export function takeRegisteredSuites(): PolicySuite[] {
 /** Whether a case targets the documents a filter matches. */
 export function isFilterCase(testCase: PolicyTestCase): testCase is PolicyFilterCase {
   return testCase.filter !== undefined
-}
-
-/** The verdict for one case across every backend. */
-export interface PolicyTestResult {
-  readonly testCase: PolicyTestCase
-  readonly outcomes: Readonly<Record<string, PolicyOutcome>>
-  readonly passed: boolean
-  /** A filter case the backends could not run; never counted as passed. */
-  readonly notRun: boolean
-  readonly failures: readonly string[]
-}
-
-function documentSuites(suites: readonly PolicySuite[]): DocumentSuite[] {
-  return suites.map((suite) => ({
-    ...suite,
-    cases: suite.cases.filter(
-      (testCase): testCase is PolicyDocumentCase => !isFilterCase(testCase),
-    ),
-  }))
-}
-
-/**
- * Runs every document case on every backend. A case fails when a backend disagrees with the expectation, or
- * when two backends disagree with each other. Filter cases need MongoDB, which these backends do not query,
- * so they are reported as not run.
- */
-export async function runPolicyTests(
-  suites: readonly PolicySuite[],
-  backends: readonly PolicyBackend[],
-): Promise<PolicyTestResult[]> {
-  const ran = await runDocumentTests(documentSuites(suites), backends)
-  const results: PolicyTestResult[] = []
-  let next = 0
-  for (const suite of suites) {
-    for (const testCase of suite.cases) {
-      if (isFilterCase(testCase)) {
-        results.push({
-          testCase,
-          outcomes: {},
-          passed: false,
-          notRun: true,
-          failures: ["not run: a filter case runs only against MongoDB"],
-        })
-        continue
-      }
-      const result: DocumentTestResult | undefined = ran[next++]
-      if (result !== undefined) results.push({ ...result, notRun: false })
-    }
-  }
-  return results
-}
-
-/** Reports which policies the document cases exercised. */
-export function policyCoverage(
-  engine: PolicyEngine,
-  suites: readonly PolicySuite[],
-  now: Date = new Date(),
-): ReturnType<typeof documentCoverage> {
-  return documentCoverage(engine, documentSuites(suites), now)
 }

@@ -1,7 +1,6 @@
-import { afterEach, describe, expect, it, vi } from "vitest"
-
 import { createClient, isCanopyError, type WebSocketLike } from "canopy.js"
 import { memoryPersister } from "canopy.js/persist"
+import { afterEach, describe, expect, it, vi } from "vitest"
 import { Server, ServerSocket } from "./support.ts"
 
 class SilentSocket implements WebSocketLike {

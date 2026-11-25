@@ -127,18 +127,20 @@ Open Studio at <http://localhost:8080/studio>. Use `bun run canopy-stack logs ap
 
 ```bash
 bun install --frozen-lockfile
-bun run check          # lint, format check, core sync check, typecheck and tests
+bun run check          # lint, format check, core layout and artifact checks, typecheck and tests
 bun run build          # dist/ for every entry point
 bun run test           # Vitest: client, React, Vue, Svelte, Solid, TanStack DB and devtools
 bun run format         # bun fmt
-bun run sync:core      # copy the universal core from ../Canopy (or CANOPY_REPO)
 ```
 
-`src/core` is vendored from Canopy, which stays the source of truth for the wire protocol, the matcher, query
-validation, policies, the config and the schema DSL (the server, the Rust core and the MongoDB differential
-tests all live there). Never edit it here: change it in Canopy, then run `bun run sync:core`.
-`bun run check:core` fails when the copy is out of date. The protocol conformance vectors in `test/vectors`
-are vendored the same way.
+`src/core` contains the wire protocol and generated Rust bindings. Refresh the artifacts with
+`bun run sync:wasm`. The protocol and authoring fixtures in `test/vectors` are snapshots of Canopy's
+conformance vectors. Update the relevant snapshots when Canopy changes them.
+
+Use `canopy.js/config`, `canopy.js/policy` and `canopy.js/schema` to declare project inputs.
+`canopy.js/emit` validates those inputs with the Rust authoring module. Use the Canopy CLI to
+resolve configuration and run policy tests. REST aggregation accepts a Standard Schema decoder
+supplied by the caller.
 
 Canopy itself depends on canopy.js (Studio, GraphQL subscriptions and its end to end tests). After a change
 here, run `bun run build`, then `bun install` in Canopy.

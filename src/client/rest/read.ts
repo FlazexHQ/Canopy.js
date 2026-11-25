@@ -61,9 +61,8 @@ export interface DecodeIssue {
 }
 
 /**
- * A Standard Schema validator of aggregation output, such as a collection definition from
- * `canopy.js/schema`: an aggregation pipeline can change the documents' shape, so its output is only
- * typed once it is checked.
+ * A Standard Schema decoder supplied by the caller. An aggregation pipeline can change document shape,
+ * so the decoder checks the output before the SDK returns it with a type.
  */
 export interface OutputDecoder<T> {
   readonly "~standard": {

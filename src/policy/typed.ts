@@ -7,7 +7,7 @@ import type {
   MinKey,
   ObjectId,
   Timestamp,
-} from "../protocol/index.ts"
+} from "../core/protocol/index.ts"
 import type { AuthVariable, ClaimCoercion, CtxVariable, NowVariable } from "./dsl.ts"
 import type { ContextLookup } from "./model.ts"
 
@@ -19,7 +19,7 @@ import type { ContextLookup } from "./model.ts"
  * import type { Database } from "../src/canopy.gen.ts"
  * import type contexts from "./policies/_context.ts"
  *
- * declare module "@canopy/policy" {
+ * declare module "canopy.js/policy" {
  *   interface Register {
  *     database: Database
  *     claims: { sub: string; org_ids: string[] }

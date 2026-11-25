@@ -1,4 +1,4 @@
-import type { Command, Environment } from "../core/config/types.ts"
+import type { Command, Environment } from "../config/types.ts"
 import { AuthoringError } from "./errors.ts"
 import { COMMANDS, type EmitOptions, emitProject } from "./project.ts"
 

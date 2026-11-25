@@ -1,4 +1,3 @@
-import { collection, t } from "canopy.js/schema"
 import { describe, expect, expectTypeOf, it, vi } from "vitest"
 
 import {
@@ -361,7 +360,24 @@ describe("REST distinct and aggregate", () => {
   })
 
   it("checks aggregation output with a Standard Schema decoder", async () => {
-    const counts = collection("counts", { _id: t.string(), n: t.int() })
+    const counts = {
+      "~standard": {
+        validate(value: unknown) {
+          if (
+            typeof value === "object" &&
+            value !== null &&
+            "_id" in value &&
+            typeof value._id === "string" &&
+            "n" in value &&
+            typeof value.n === "number" &&
+            Number.isInteger(value.n)
+          ) {
+            return { value: { _id: value._id, n: value.n } }
+          }
+          return { issues: [{ message: "Expected an integer", path: ["n"] }] }
+        },
+      },
+    }
     const { fetch } = fakeFetch(
       json({ data: [{ _id: "a", n: 2 }], ct: "7" }),
       json({
@@ -382,7 +398,7 @@ describe("REST distinct and aggregate", () => {
       .catch((reason: unknown) => reason)
     expect(error).toBeInstanceOf(ValidationError)
     expect((error as Error).message).toBe(
-      "Output document 1 does not match: Expected int, got a string at n",
+      "Output document 1 does not match: Expected an integer at n",
     )
   })
 })

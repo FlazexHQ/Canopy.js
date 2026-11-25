@@ -1,8 +1,7 @@
-import type { ObjectShape, Shape } from "./shape.ts"
 import { DECLARED } from "./declared.ts"
 import { type FieldBuilder, type Fields, idGenerator, objectShape } from "./fields.ts"
-import { type StandardProps, standardProps } from "./standard.ts"
-import type { CollectionTypesOf, DocOf } from "./types.ts"
+import type { ObjectShape, Shape } from "./shape.ts"
+import type { CollectionTypesOf } from "./types.ts"
 
 export {
   type Builder,
@@ -13,7 +12,6 @@ export {
   type TypeOf,
   t,
 } from "./fields.ts"
-export type { StandardIssue, StandardProps, StandardResult } from "./standard.ts"
 export type { CollectionTypesOf, DocOf, IdBuilderOf, NewDocOf, PatchOf } from "./types.ts"
 
 /** How a collection's `_id` is assigned. */
@@ -31,7 +29,6 @@ export interface AnyCollectionDefinition {
   readonly shape: ObjectShape
   readonly id: IdStrategy
   prepare(doc: object): Record<string, unknown>
-  readonly "~standard": StandardProps<unknown, object>
   readonly "~types"?: {
     readonly Document: object
     readonly Insert: object
@@ -58,8 +55,6 @@ export interface CollectionDefinition<
    * them out. Throws a `TypeError` when `_id` is missing and the caller must supply it.
    */
   prepare(doc: object): Record<string, unknown>
-  /** Standard Schema validation of a stored (decoded) document. */
-  readonly "~standard": StandardProps<unknown, DocOf<F>>
   /** The document, insert and patch types; never present at runtime. */
   readonly "~types"?: CollectionTypesOf<F>
 }
@@ -134,7 +129,6 @@ export function collection<const N extends string, const F extends Fields>(
       }
       return out
     },
-    "~standard": standardProps<DocOf<F>>(shape),
   })
 }
 

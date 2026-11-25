@@ -236,7 +236,7 @@ export type AuthInput =
 export type PoliciesInput =
   | {
       /** Relative to the config file. */
-      readonly dir: string
+      readonly dir: Value<string>
       /** Reload on change. @default true */
       readonly watch?: boolean
     }

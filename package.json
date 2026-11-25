@@ -92,9 +92,9 @@
       "default": "./dist/devtools/index.js"
     },
     "./policy": {
-      "types": "./dist/core/policy/index.d.ts",
-      "canopy-js-source": "./src/core/policy/index.ts",
-      "default": "./dist/core/policy/index.js"
+      "types": "./dist/policy/index.d.ts",
+      "canopy-js-source": "./src/policy/index.ts",
+      "default": "./dist/policy/index.js"
     },
     "./policy/testing": {
       "types": "./dist/policy/testing.d.ts",
@@ -107,9 +107,9 @@
       "default": "./dist/schema/index.js"
     },
     "./config": {
-      "types": "./dist/core/config/index.d.ts",
-      "canopy-js-source": "./src/core/config/index.ts",
-      "default": "./dist/core/config/index.js"
+      "types": "./dist/config/index.d.ts",
+      "canopy-js-source": "./src/config/index.ts",
+      "default": "./dist/config/index.js"
     },
     "./protocol": {
       "types": "./dist/core/protocol/index.d.ts",
@@ -142,11 +142,10 @@
     "format": "bun fmt",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
-    "sync:core": "bun scripts/sync-core.ts",
-    "check:core": "bun scripts/sync-core.ts --check",
     "sync:wasm": "bun scripts/sync-wasm.ts",
+    "check:core-layout": "bun scripts/check-core-layout.ts && bun scripts/sync-wasm.ts --check --manifest-only",
     "check:wasm": "bun scripts/sync-wasm.ts --check",
-    "check": "bun run lint && bun run format:check && bun run check:core && bun run check:wasm && bun run typecheck && bun run test",
+    "check": "bun run lint && bun run format:check && bun run check:core-layout && bun run check:wasm && bun run typecheck && bun run test",
     "changeset": "changeset",
     "version-packages": "changeset version",
     "format:check": "bun fmt --check"

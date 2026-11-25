@@ -1,4 +1,4 @@
-import { CanopyError, ErrorCode } from "../protocol/index.ts"
+import { CanopyError, ErrorCode } from "../core/protocol/index.ts"
 import type { Command, ResolvedConfig } from "./types.ts"
 
 /** Where a resolved value came from. */
@@ -51,7 +51,7 @@ function indent(text: string, prefix: string): string {
     .join("\n")
 }
 
-/** Options of {@link resolveConfig}. */
+/** Options of config resolution. */
 export interface ResolveOptions {
   /** The variables, after env files were merged in (the process environment wins). */
   readonly env: Readonly<Record<string, string | undefined>>

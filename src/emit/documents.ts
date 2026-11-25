@@ -1,6 +1,6 @@
-import { isEnvMarker } from "../core/config/env.ts"
-import type { CollectionPolicies, ContextDefinitions } from "../core/policy/model.ts"
+import { isEnvMarker } from "../config/env.ts"
 import { canonicalString, isDocument, toCanonical } from "../core/protocol/index.ts"
+import type { CollectionPolicies, ContextDefinitions } from "../policy/model.ts"
 import type { PolicyTestCase } from "../policy/testing.ts"
 import { declaredCollections } from "../schema/declared.ts"
 import { isFieldBuilder } from "../schema/fields.ts"

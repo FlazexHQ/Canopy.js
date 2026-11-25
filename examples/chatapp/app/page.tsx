@@ -1,8 +1,5 @@
 "use client"
 
-import { createClient, type Doc } from "canopy.js"
-import { createAuth } from "canopy.js/auth"
-import { indexedDbPersister } from "canopy.js/persist"
 import { Button } from "@ui-sdk/react/button"
 import { Input } from "@ui-sdk/react/input"
 import {
@@ -10,6 +7,9 @@ import {
   PasswordInputControl,
   PasswordInputToggle,
 } from "@ui-sdk/react/password-input"
+import { createClient, type Doc } from "canopy.js"
+import { createAuth } from "canopy.js/auth"
+import { indexedDbPersister } from "canopy.js/persist"
 import { type FormEvent, useEffect, useRef, useState } from "react"
 import { schema } from "./schema"
 

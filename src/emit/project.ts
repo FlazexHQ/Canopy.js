@@ -1,11 +1,11 @@
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs"
 import { dirname, extname, isAbsolute, join, relative, resolve, sep } from "node:path"
 import { pathToFileURL } from "node:url"
-import { isEnvMarker } from "../core/config/env.ts"
-import type { Command, Environment } from "../core/config/types.ts"
-import type { CollectionPolicies, ContextDefinitions } from "../core/policy/model.ts"
+import { isEnvMarker } from "../config/env.ts"
+import type { Command, Environment } from "../config/types.ts"
 import { isDocument, parse } from "../core/protocol/index.ts"
-import { type PolicyTestCase, type PolicySuite, takeRegisteredSuites } from "../policy/testing.ts"
+import type { CollectionPolicies, ContextDefinitions } from "../policy/model.ts"
+import { type PolicySuite, type PolicyTestCase, takeRegisteredSuites } from "../policy/testing.ts"
 import {
   type CollectionSchemaDocument,
   type ConfigDocument,

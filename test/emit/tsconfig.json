@@ -13,9 +13,5 @@
   },
   "include": ["."],
   "exclude": ["fixtures"],
-  "references": [
-    { "path": "../../src" },
-    { "path": "../../src/tsconfig.config.json" },
-    { "path": "../../src/tsconfig.emit.json" }
-  ]
+  "references": [{ "path": "../../src" }, { "path": "../../src/tsconfig.emit.json" }]
 }

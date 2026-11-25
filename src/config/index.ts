@@ -1,14 +1,5 @@
 export { builtin, email, external } from "./auth.ts"
-export { type CronSchedule, parseCron } from "./cron.ts"
-export {
-  type EnvKind,
-  type EnvMarker,
-  type EnvOptions,
-  env,
-  isEnvMarker,
-  parseDuration,
-} from "./env.ts"
-export { databaseFromUri, joinPath } from "./normalize.ts"
+export { type EnvKind, type EnvMarker, type EnvOptions, env, isEnvMarker } from "./env.ts"
 export {
   ConfigError,
   type ConfigProblem,
@@ -16,8 +7,6 @@ export {
   type ResolveOptions,
   type Source,
 } from "./resolution.ts"
-export { amendConfig, formatConfig, isResolvedConfig, redactUri, resolveConfig } from "./resolve.ts"
-export { suggest } from "./resolver.ts"
 export {
   type Auth0Input,
   type AuthInput,

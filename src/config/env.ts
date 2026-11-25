@@ -32,8 +32,6 @@ function marker<T>(
   optional: boolean,
   fallback: T | undefined,
 ): EnvMarker<T> {
-  if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(name))
-    throw new TypeError(`env(): ${JSON.stringify(name)} is not a valid variable name`)
   return Object.freeze({ [MARKER]: true as const, name, kind, secret, optional, fallback })
 }
 
@@ -85,22 +83,4 @@ export const env: Reader<string> & {
 /** Whether a value is an {@link env} marker. */
 export function isEnvMarker(value: unknown): value is EnvMarker<unknown> {
   return typeof value === "object" && value !== null && Object.hasOwn(value, MARKER)
-}
-
-const DURATION = /^(\d+(?:\.\d+)?)(ms|s|m|h|d)$/
-const UNIT_MS: Readonly<Record<string, number>> = {
-  ms: 1,
-  s: 1000,
-  m: 60_000,
-  h: 3_600_000,
-  d: 86_400_000,
-}
-
-/** Parses `500ms`, `30s`, `5m`, `24h` or `7d` into milliseconds; a bare number is milliseconds. */
-export function parseDuration(text: string): number | undefined {
-  const trimmed = text.trim()
-  if (/^\d+$/.test(trimmed)) return Number(trimmed)
-  const match = DURATION.exec(trimmed)
-  if (match === null) return undefined
-  return Math.round(Number(match[1]) * (UNIT_MS[match[2] ?? "ms"] ?? 1))
 }
