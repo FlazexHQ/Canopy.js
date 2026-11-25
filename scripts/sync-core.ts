@@ -5,8 +5,8 @@ import { fileURLToPath } from "node:url"
 import ts from "typescript"
 
 /**
- * Vendors the universal core of Canopy (protocol, matcher, query, policy, config and the schema DSL) into
- * `src/core`, the protocol conformance vectors into `test/vectors`, and the edge config into the CLI templates.
+ * Vendors the universal core of Canopy (protocol, query, policy, config and the schema DSL, with the parts of
+ * the matcher they use) into `src/core` (except `src/core/wasm`, which `sync-wasm.ts` owns), the protocol conformance vectors into `test/vectors`, and the edge config into the CLI templates.
  *
  * Canopy is the source of truth for these modules: the server, the Rust equivalence suites and the MongoDB
  * differential tests all live there. This script copies every file reachable from the entry points below,
@@ -20,15 +20,17 @@ import ts from "typescript"
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..")
 const CORE_DIR = join(ROOT, "src", "core")
+const WASM_DIR = join(CORE_DIR, "wasm")
 const VECTORS_DIR = join(ROOT, "test", "vectors")
 const EDGE_CONFIG = join(ROOT, "templates", "cli", "Caddyfile")
 
-/** The import specifiers the SDK needs; everything they reach is vendored too. */
+/**
+ * The import specifiers the SDK needs; everything they reach is vendored too. The client evaluates filters,
+ * sorts, projections and updates with the Rust core in `src/core/wasm` (see `sync-wasm.ts`), so the matcher
+ * is vendored only as far as the authoring modules below reach it.
+ */
 const ENTRIES = [
   "@canopy/protocol",
-  "@canopy/matcher",
-  "@canopy/matcher/lite",
-  "@canopy/matcher/update",
   "@canopy/query",
   "@canopy/policy",
   "@canopy/policy/testing",
@@ -185,7 +187,7 @@ function plan(repo: string): Map<string, string> {
     queue.push(...result.reached)
   }
 
-  const vectors = join(repo, "packages", "protocol", "vectors")
+  const vectors = join(repo, "conformance", "protocol")
   for (const name of readdirSync(vectors).sort()) {
     if (!name.endsWith(".json")) continue
     files.set(
@@ -218,7 +220,7 @@ function main(): void {
     )
   const expected = plan(options.from)
   const managed = (path: string): boolean =>
-    path.startsWith(CORE_DIR + sep) ||
+    (path.startsWith(CORE_DIR + sep) && !path.startsWith(WASM_DIR + sep)) ||
     (path.startsWith(VECTORS_DIR + sep) && path.endsWith(".json"))
   const present = [...listFiles(CORE_DIR), ...listFiles(VECTORS_DIR)].filter(
     (path) => managed(path) && !path.endsWith(`${sep}README.md`),

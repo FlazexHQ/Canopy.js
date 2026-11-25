@@ -1,17 +1,17 @@
 import {
-  type CompiledFilter,
-  type CompiledSort,
-  compileFilter,
-  compileSortKeys,
-  UnsupportedQueryError,
-} from "../core/matcher/lite.ts"
-import {
   type ClusterTime,
   canonicalString,
   compareCt,
   type Document,
   ZERO_CT,
 } from "../core/protocol/index.ts"
+import {
+  type DocumentFilter,
+  type Engine,
+  loadEngine,
+  loadedEngine,
+  UnsupportedQueryError,
+} from "./engine.ts"
 
 /** The cache key of a document: `collection/canonical(_id)`. */
 export function cacheKey(coll: string, id: unknown): string {
@@ -60,11 +60,17 @@ export type Layer =
     }
   | { readonly kind: "deleteMany"; readonly coll: string; readonly filter: Document }
 
+/**
+ * A filter as the store holds it: `undefined` until the client core compiles it, `null` when the core
+ * cannot evaluate it (or it is invalid), so the server decides.
+ */
+type Matcher = DocumentFilter | null | undefined
+
 interface LayerEntry {
   readonly mid: string
   readonly layer: Layer
   readonly key: string | undefined
-  readonly matcher: CompiledFilter | undefined
+  matcher: Matcher
   /** Set once acknowledged without an echo: the layer waits for server state at this time. */
   awaiting: { readonly ct: ClusterTime; readonly keys: Set<string> } | undefined
 }
@@ -93,9 +99,14 @@ interface DocEntry {
 interface QueryEntry {
   readonly id: string
   readonly coll: string
-  readonly order: CompiledSort
-  readonly matcher: CompiledFilter | undefined
+  readonly sort: Readonly<Record<string, unknown>>
+  /** Whether the sort names fields; without any, the order is by `_id` alone, which never changes. */
+  readonly sorted: boolean
+  /** The filter to predict membership with, or `undefined` when a function projects the query. */
+  readonly filter: Document | undefined
+  matcher: Matcher
   readonly limit: number | undefined
+  readonly fields: Readonly<Record<string, unknown>> | undefined
   readonly project: ((doc: Document) => Document) | undefined
   readonly projected: Map<string, { readonly source: Document; readonly doc: Document }>
   status: QueryStatus
@@ -103,6 +114,16 @@ interface QueryEntry {
   unconfirmed: Set<string> | undefined
   state: QueryState
   dirty: boolean
+  /** The position of each member in the server's snapshot, which comes in the order of the query. */
+  readonly arrival: Map<string, number>
+  /**
+   * Whether `arrival` still gives the order of the members: true until a change could have moved one
+   * (a member added after the snapshot, a changed document under a sort, or a resync). Before the client
+   * core loads, a query renders in snapshot order only while this holds.
+   */
+  ordered: boolean
+  /** Whether the snapshot being received started with no members, so its order is the query's order. */
+  numbering: boolean
 }
 
 /** A document of the document cache, with the cluster time of its server state. */
@@ -117,6 +138,8 @@ export interface QuerySpec {
   readonly filter?: Document
   readonly sort?: Readonly<Record<string, 1 | -1>>
   readonly limit?: number
+  /** A MongoDB projection, applied by the client core to the changed members in one call. */
+  readonly fields?: Readonly<Record<string, 0 | 1>>
   readonly project?: (doc: Document) => Document
 }
 
@@ -126,6 +149,25 @@ const PROVISIONAL_MS = 5000
 /** Applies MongoDB update operators to a copy of a document. */
 export type Updater = (doc: Document, update: Document) => Document
 
+/** Runs `task` after the browser has painted, or on the next turn where nothing paints. */
+function afterPaint(task: () => void): void {
+  const host = globalThis as { requestAnimationFrame?: (callback: () => void) => unknown }
+  if (typeof host.requestAnimationFrame === "function")
+    host.requestAnimationFrame(() => {
+      setTimeout(task, 0)
+    })
+  else setTimeout(task, 0)
+}
+
+/** Whether a compiled filter matches a document; `false` when there is none or it cannot decide. */
+function matches(matcher: Matcher, doc: Document): boolean {
+  return matcher ? matcher.matchAll([doc])[0] === true : false
+}
+
+function asError(error: unknown): Error {
+  return error instanceof Error ? error : new Error(String(error))
+}
+
 /**
  * The normalized document cache with optimistic layers. Server state only moves forward: a message older
  * than the cached state is ignored, and ties are applied because `set` values are absolute. The view of a
@@ -133,6 +175,12 @@ export type Updater = (doc: Document, update: Document) => Document
  * change from someone else rebases under the pending ones. A live query trusts the server's membership,
  * except for documents touched by pending layers, whose membership it predicts with the matcher when the
  * filter allows it.
+ *
+ * Filters, sorts, projections and updates run in the Rust client core, loaded once per page after the first
+ * live query has painted, or as soon as something needs it (an optimistic change, a projected query). Until
+ * it has loaded, a query renders the server's members in the order of its snapshot, which the server sends
+ * sorted; a query that needs the core for its next state (an optimistic change, a change that may move a
+ * member, a projection) keeps its previous state and renders once the core arrives.
  */
 export class Store {
   private readonly docs = new Map<string, DocEntry>()
@@ -144,20 +192,47 @@ export class Store {
   private timer: ReturnType<typeof setTimeout> | undefined
   private readonly now: () => number
   private updater: Updater | undefined
+  private engine: Engine | undefined
+  private loading: Promise<void> | undefined
+  private failed = false
+  private painted = false
 
   /** Called when a layer acknowledged without echo times out, so the affected queries can be refetched. */
   onRefetch: ((coll: string) => void) | undefined
 
   /**
-   * `updater` folds update layers. The client loads it lazily, to keep the update engine out of the entry
-   * chunk; until then update layers leave documents as the server has them.
+   * `updater` folds update layers in place of the client core, which otherwise applies them once it has
+   * loaded; until then update layers leave documents as the server has them.
    */
   constructor(now: () => number = Date.now, updater?: Updater) {
     this.now = now
     this.updater = updater
+    this.engine = loadedEngine()
   }
 
-  /** Installs the update engine and re-renders every query, so pending update layers show. */
+  /**
+   * Loads the client core unless it is loaded or loading, and settles once it is installed. A failed load
+   * settles too: it fails the queries waiting for the core, and only another call of this method tries again.
+   */
+  loadCore(): Promise<void> {
+    if (this.engine !== undefined) return Promise.resolve()
+    this.loading ??= loadEngine().then(
+      (engine) => this.useEngine(engine),
+      (error: unknown) => {
+        this.loading = undefined
+        this.failed = true
+        this.engineFailed(error)
+      },
+    )
+    return this.loading
+  }
+
+  /** Starts loading the client core for something that needs it, unless a load has already failed. */
+  private needCore(): void {
+    if (this.engine === undefined && !this.failed) void this.loadCore()
+  }
+
+  /** Installs an updater that folds update layers in place of the client core, and re-renders every query. */
   useUpdater(updater: Updater): void {
     this.updater = updater
     this.version += 1
@@ -165,31 +240,81 @@ export class Store {
     this.schedule()
   }
 
-  private applyLayer(doc: Document, update: Document): Document {
-    if (this.updater === undefined) return doc
+  /** Installs the client core: compiles the pending filters and renders every query. */
+  private useEngine(engine: Engine): void {
+    if (this.engine !== undefined) return
+    this.engine = engine
+    for (const layer of this.layers) this.compileLayer(layer)
+    for (const query of this.queries.values()) {
+      try {
+        this.prepare(query, engine)
+      } catch (error: unknown) {
+        query.status = "error"
+        query.error = asError(error)
+      }
+      query.dirty = true
+    }
+    this.version += 1
+    this.schedule()
+  }
+
+  /** The client core could not load: every query waiting for it ends with that error. */
+  private engineFailed(error: unknown): void {
+    for (const [id, query] of this.queries) if (query.dirty) this.fail(id, asError(error))
+  }
+
+  /** Compiles the filter of a query and checks its sort, throwing for an invalid one. */
+  private prepare(query: QueryEntry, engine: Engine): void {
+    engine.sortOrder(query.sort, [])
+    if (query.filter === undefined) {
+      query.matcher = null
+      return
+    }
     try {
-      return this.updater(doc, update)
+      query.matcher = engine.compileFilter(query.filter)
+    } catch (error: unknown) {
+      query.matcher = null
+      if (!(error instanceof UnsupportedQueryError)) throw error
+    }
+  }
+
+  private compileLayer(entry: LayerEntry): void {
+    const { engine } = this
+    const { layer } = entry
+    if (engine === undefined || (layer.kind !== "updateMany" && layer.kind !== "deleteMany")) return
+    try {
+      entry.matcher = engine.compileFilter(layer.filter)
+    } catch {
+      entry.matcher = null
+    }
+  }
+
+  private release(entry: LayerEntry): void {
+    entry.matcher?.free()
+    entry.matcher = null
+  }
+
+  private applyLayer(doc: Document, update: Document): Document {
+    const updater = this.updater ?? this.engine?.applyUpdate
+    if (updater === undefined) return doc
+    try {
+      return updater(doc, update)
     } catch {
       return doc
     }
   }
 
-  /** Registers a live query. */
+  /** Registers a live query. Throws for an invalid filter or sort once the client core has loaded. */
   addQuery(id: string, coll: string, query: QuerySpec = {}): void {
-    let matcher: CompiledFilter | undefined
-    if (query.project === undefined) {
-      try {
-        matcher = compileFilter(query.filter ?? {})
-      } catch (error: unknown) {
-        if (!(error instanceof UnsupportedQueryError)) throw error
-      }
-    }
-    this.queries.set(id, {
+    const entry: QueryEntry = {
       id,
       coll,
-      order: compileSortKeys(query.sort ?? {}),
-      matcher,
+      sort: query.sort ?? {},
+      sorted: Object.keys(query.sort ?? {}).length > 0,
+      filter: query.project === undefined ? (query.filter ?? {}) : undefined,
+      matcher: undefined,
       limit: query.limit,
+      fields: query.fields,
       project: query.project,
       projected: new Map(),
       status: "loading",
@@ -197,11 +322,19 @@ export class Store {
       unconfirmed: undefined,
       state: { data: [], status: "loading", error: undefined },
       dirty: true,
-    })
+      arrival: new Map(),
+      ordered: true,
+      numbering: true,
+    }
+    if (this.engine !== undefined) this.prepare(entry, this.engine)
+    else if (entry.fields !== undefined) this.needCore()
+    this.queries.get(id)?.matcher?.free()
+    this.queries.set(id, entry)
   }
 
   /** Removes a live query and its memberships. */
   removeQuery(id: string): void {
+    this.queries.get(id)?.matcher?.free()
     this.queries.delete(id)
     for (const entry of [...this.docs.values()]) {
       entry.subs.delete(id)
@@ -297,13 +430,13 @@ export class Store {
           }
           break
         case "updateMany":
-          if (doc !== undefined && matcher?.matches(doc) === true) {
+          if (doc !== undefined && matches(matcher, doc)) {
             touched = true
             doc = this.applyLayer(doc, layer.update)
           }
           break
         case "deleteMany":
-          if (doc !== undefined && matcher?.matches(doc) === true) {
+          if (doc !== undefined && matches(matcher, doc)) {
             touched = true
             doc = undefined
           }
@@ -319,51 +452,138 @@ export class Store {
     if (target === undefined || target.layer.coll !== entry.coll) return false
     if (target.key !== undefined) return target.key === entry.key
     const { doc } = this.compute(entry, index)
-    return doc !== undefined && target.matcher?.matches(doc) === true
+    return doc !== undefined && matches(target.matcher, doc)
   }
 
   /** The current state of a query. */
   state(id: string): QueryState {
     const query = this.queries.get(id)
     if (query === undefined) return LOADING_STATE
-    if (query.dirty) {
-      query.dirty = false
-      const now = this.now()
-      let members: Document[] = []
-      for (const entry of this.docs.values()) {
-        if (entry.coll !== query.coll) continue
-        const { doc, touched } = this.fold(entry)
-        if (doc === undefined) continue
-        const predicted =
-          (touched || (entry.provisional !== undefined && entry.provisional.until > now)) &&
-          query.matcher !== undefined
-        const member = predicted ? query.matcher?.matches(doc) === true : entry.subs.has(id)
-        if (!member) continue
-        members.push(this.projectFor(query, entry.key, doc))
-      }
-      query.order.sort(members)
-      if (query.limit !== undefined && query.limit > 0) members = members.slice(0, query.limit)
-      const previous = query.state.data
-      const same =
-        previous.length === members.length && previous.every((doc, index) => doc === members[index])
-      query.state = {
-        data: same ? previous : members,
-        status: query.status,
-        error: query.error,
-      }
+    if (this.engine === undefined) {
+      const loaded = loadedEngine()
+      if (loaded !== undefined) this.useEngine(loaded)
     }
+    if (query.dirty) {
+      const members = this.render(query)
+      if (members !== undefined) {
+        query.dirty = false
+        const previous = query.state.data
+        const same =
+          previous.length === members.length &&
+          previous.every((doc, index) => doc === members[index])
+        query.state = {
+          data: same ? previous : members,
+          status: query.status,
+          error: query.error,
+        }
+        return query.state
+      }
+      this.needCore()
+    }
+    if (query.status === "error" && query.state.error !== query.error)
+      query.state = { data: query.state.data, status: query.status, error: query.error }
     return query.state
   }
 
-  private projectFor(query: QueryEntry, key: string, doc: Document): Document {
-    if (query.project === undefined) return doc
-    const memo = query.projected.get(key)
-    if (memo !== undefined && memo.source === doc) return memo.doc
-    const out = query.project(doc)
-    const kept =
-      memo !== undefined && canonicalString(memo.doc) === canonicalString(out) ? memo.doc : out
-    query.projected.set(key, { source: doc, doc: kept })
-    return kept
+  /**
+   * The members of a query in order, or `undefined` when they need the client core and it has not loaded:
+   * the query has a projection, a member may have moved since the snapshot, or a document is predicted
+   * (touched by a pending layer, or confirmed by an ack the server's own message has not caught up with).
+   */
+  private render(query: QueryEntry): Document[] | undefined {
+    const { engine } = this
+    if (engine === undefined && (query.fields !== undefined || !query.ordered)) return undefined
+    const now = this.now()
+    const candidates: { readonly key: string; readonly doc: Document; member: boolean }[] = []
+    const predicted: number[] = []
+    for (const entry of this.docs.values()) {
+      if (entry.coll !== query.coll) continue
+      const { doc, touched } = this.fold(entry)
+      if (doc === undefined) continue
+      if (touched || (entry.provisional !== undefined && entry.provisional.until > now)) {
+        if (engine === undefined) return undefined
+        if (query.matcher) predicted.push(candidates.length)
+      }
+      candidates.push({ key: entry.key, doc, member: entry.subs.has(query.id) })
+    }
+    if (engine === undefined) {
+      const arrival: number[] = []
+      const members: { readonly key: string; readonly doc: Document }[] = []
+      for (const candidate of candidates) {
+        if (!candidate.member) continue
+        const position = query.arrival.get(candidate.key)
+        if (position === undefined) return undefined
+        arrival.push(position)
+        members.push(candidate)
+      }
+      const order = members.map((_, index) => index)
+      order.sort((a, b) => (arrival[a] ?? 0) - (arrival[b] ?? 0))
+      return this.limit(
+        query,
+        this.projectAll(
+          query,
+          order.flatMap((index) => members[index] ?? []),
+          undefined,
+        ),
+      )
+    }
+    if (query.matcher && predicted.length > 0) {
+      const decisions = query.matcher.matchAll(
+        predicted.flatMap((index): Document[] => {
+          const candidate = candidates[index]
+          return candidate === undefined ? [] : [candidate.doc]
+        }),
+      )
+      predicted.forEach((index, position) => {
+        const candidate = candidates[index]
+        const decision = decisions[position]
+        if (candidate !== undefined && decision !== undefined) candidate.member = decision
+      })
+    }
+    let members = this.projectAll(
+      query,
+      candidates.filter((candidate) => candidate.member),
+      engine,
+    )
+    if (members.length > 1) {
+      const sorted = members
+      members = engine.sortOrder(query.sort, sorted).flatMap((index): Document[] => {
+        const doc = sorted[index]
+        return doc === undefined ? [] : [doc]
+      })
+    }
+    return this.limit(query, members)
+  }
+
+  private limit(query: QueryEntry, members: Document[]): Document[] {
+    return query.limit !== undefined && query.limit > 0 ? members.slice(0, query.limit) : members
+  }
+
+  /**
+   * Projects the members of a query, reusing the previous result of every document that did not change
+   * and projecting the others in one call to the client core.
+   */
+  private projectAll(
+    query: QueryEntry,
+    members: readonly { readonly key: string; readonly doc: Document }[],
+    engine: Engine | undefined,
+  ): Document[] {
+    const { fields, project } = query
+    if (fields === undefined && project === undefined) return members.map(({ doc }) => doc)
+    const misses = members.filter(({ key, doc }) => query.projected.get(key)?.source !== doc)
+    const sources = misses.map(({ doc }) => doc)
+    const projected =
+      fields === undefined || engine === undefined
+        ? sources.map((doc) => (project === undefined ? doc : project(doc)))
+        : engine.project(fields, sources)
+    misses.forEach(({ key, doc }, index) => {
+      const out = projected[index] ?? doc
+      const memo = query.projected.get(key)
+      const kept =
+        memo !== undefined && canonicalString(memo.doc) === canonicalString(out) ? memo.doc : out
+      query.projected.set(key, { source: doc, doc: kept })
+    })
+    return members.map(({ key, doc }) => query.projected.get(key)?.doc ?? doc)
   }
 
   private touchColl(coll: string): void {
@@ -390,6 +610,10 @@ export class Store {
         const after = this.state(id)
         if (before === after) continue
         for (const listener of this.listeners.get(id) ?? []) listener()
+        if (!this.painted && after.status !== "loading") {
+          this.painted = true
+          afterPaint(() => this.needCore())
+        }
       }
     })
   }
@@ -444,6 +668,7 @@ export class Store {
       if (compareCt(entry.ct, layer.awaiting.ct) >= 0) layer.awaiting.keys.delete(entry.key)
       if (layer.awaiting.keys.size === 0) {
         this.layers.splice(this.layers.indexOf(layer), 1)
+        this.release(layer)
         dropped = true
       }
     }
@@ -477,7 +702,12 @@ export class Store {
     for (const sub of subs) {
       entry.subs.add(sub)
       affected.add(sub)
-      this.queries.get(sub)?.unconfirmed?.delete(entry.key)
+      const query = this.queries.get(sub)
+      if (query === undefined) continue
+      if (query.numbering && !query.arrival.has(entry.key))
+        query.arrival.set(entry.key, query.arrival.size)
+      else query.ordered = false
+      query.unconfirmed?.delete(entry.key)
     }
     this.serverMoved(entry)
     this.touchColl(coll)
@@ -502,6 +732,8 @@ export class Store {
     entry.tombstone = false
     if (entry.server === undefined || canonicalString(entry.server) !== canonicalString(next))
       entry.server = next
+    for (const query of this.queries.values())
+      if (query.coll === coll && query.sorted) query.ordered = false
     this.serverMoved(entry)
     this.touchColl(coll)
   }
@@ -521,18 +753,14 @@ export class Store {
   /** Adds an optimistic layer for mutation `mid` and re-renders the affected queries at once. */
   addLayer(mid: string, layer: Layer): void {
     let key: string | undefined
-    let matcher: CompiledFilter | undefined
-    if (layer.kind === "updateMany" || layer.kind === "deleteMany") {
-      try {
-        matcher = compileFilter(layer.filter)
-      } catch {
-        matcher = undefined
-      }
-    } else {
+    if (layer.kind !== "updateMany" && layer.kind !== "deleteMany") {
       key = cacheKey(layer.coll, layer.id)
       this.entry(layer.coll, layer.id)
     }
-    this.layers.push({ mid, layer, key, matcher, awaiting: undefined })
+    const entry: LayerEntry = { mid, layer, key, matcher: undefined, awaiting: undefined }
+    this.compileLayer(entry)
+    this.layers.push(entry)
+    this.needCore()
     this.version += 1
     this.touchColl(layer.coll)
   }
@@ -541,7 +769,10 @@ export class Store {
   dropLayer(mid: string): void {
     const removed = this.layers.filter((layer) => layer.mid === mid)
     if (removed.length === 0) return
-    for (const layer of removed) this.layers.splice(this.layers.indexOf(layer), 1)
+    for (const layer of removed) {
+      this.layers.splice(this.layers.indexOf(layer), 1)
+      this.release(layer)
+    }
     this.version += 1
     const colls = new Set(removed.map((layer) => layer.layer.coll))
     for (const coll of colls) this.touchColl(coll)
@@ -637,6 +868,7 @@ export class Store {
     }
     query.status = "ready"
     query.error = undefined
+    query.numbering = false
     this.touch([id])
   }
 
@@ -650,6 +882,14 @@ export class Store {
     const unconfirmed = new Set<string>()
     for (const [key, entry] of this.docs) if (entry.subs.has(id)) unconfirmed.add(key)
     query.unconfirmed = unconfirmed
+    if (unconfirmed.size === 0) {
+      query.arrival.clear()
+      query.ordered = true
+      query.numbering = true
+    } else {
+      query.ordered = false
+      query.numbering = false
+    }
     if (query.status === "ready") query.status = "stale"
     this.touch([id])
   }
@@ -673,6 +913,7 @@ export class Store {
     const known = new Set<string>()
     for (const [key, entry] of this.docs) if (entry.subs.has(id)) known.add(key)
     for (const item of docs) this.added(query.coll, item.id, item.doc, item.ct, [id])
+    query.numbering = false
     query.unconfirmed = new Set(
       docs.map((item) => cacheKey(query.coll, item.id)).filter((key) => !known.has(key)),
     )

@@ -1,0 +1,17 @@
+{
+  "source": "packages/wasm/generated",
+  "files": {
+    "client/canopy_client.js": "97f8c07a1ec646409266f6c864bf976fe4b5bd6b9709199a1d76f85341970500",
+    "client/canopy_client.d.ts": "6e10f7c9678139e3d69561440c691dd7f44d4ff7765cfe62154137146c1bbc68",
+    "client/canopy_client_bg.wasm": "47a851f1132ecad39ff5c5b2ed81fd6746e1001d237e6007aaf795c590bdf002",
+    "client/canopy_client_js.js": "b36e16261bebb062cb527ef8ba1099ff6735661e13aac936df035f3796535792",
+    "client/canopy_client_js.d.ts": "5733aaa00fe48225acf9360001b8d8035117ba29019ae09dc307d649e80da7e2",
+    "client/canopy_client_translated.js": "563a2931c8a0f6122029ff92a7ddaa69d8fd25333811367b41819ce3d0047e77",
+    "transforms/canopy_transforms.js": "41fbb7bcf2f1c2491647413f4befab666004e8e413139e2c18d734f5e4ffa8e3",
+    "transforms/canopy_transforms.d.ts": "80a909691fdbcc098cc4293f3a516639514e46b31e14e8dae860d991f1ea1ec7",
+    "transforms/canopy_transforms_bg.wasm": "3ca235fe42f654deecffc03681a407c1c7b697b5e533d0e2c11172ce2121ee46",
+    "transforms/canopy_transforms_js.js": "0489124be47eda0b1c2e73bcb282468abd3abfffa824f464ecc0abf6bbdb7651",
+    "transforms/canopy_transforms_js.d.ts": "6eaa0a62976f7387a9e4509f32e646001edf6abb1da780e714ade71a08cb0c9c",
+    "transforms/canopy_transforms_translated.js": "e98b165459a66fba914030d32253081d7d1117f41389ee05cf914c18f264238b"
+  }
+}

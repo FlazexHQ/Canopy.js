@@ -1,4 +1,5 @@
 import { readFileSync } from "node:fs"
+import { fileURLToPath } from "node:url"
 
 import { svelte } from "@sveltejs/vite-plugin-svelte"
 import { type Alias, defineConfig, defineProject } from "vitest/config"
@@ -6,8 +7,8 @@ import { type Alias, defineConfig, defineProject } from "vitest/config"
 /**
  * Tests import the package by its own name (`canopy.js`, `canopy.js/react`, ...), so they exercise the
  * public entry points. Each one is aliased to its source file under the `canopy-js-source` condition of the
- * exports map, so tests run without a build. Under Deno, a setup file fills in a worker API that Vitest's
- * thread pool needs (run Deno with `--pool=threads`).
+ * exports map, so tests run without a build. A setup file loads the Rust client core before each test file.
+ * Under Deno, another fills in a worker API that Vitest's thread pool needs (run Deno with `--pool=threads`).
  */
 const manifest: { exports: Record<string, unknown> } = JSON.parse(
   readFileSync(new URL("./package.json", import.meta.url), "utf8"),
@@ -38,8 +39,11 @@ const ssr = {
   resolve: { conditions: ["canopy-js-source", "node", "module", "development|production"] },
 }
 
-const setupFiles =
-  "Deno" in globalThis ? [new URL("./vitest.deno-setup.ts", import.meta.url).pathname] : []
+const engineSetup = fileURLToPath(new URL("./test/support/engine.ts", import.meta.url))
+const setupFiles = [
+  ...("Deno" in globalThis ? [new URL("./vitest.deno-setup.ts", import.meta.url).pathname] : []),
+  engineSetup,
+]
 
 function project(name: string, environment: "node" | "happy-dom", include: string[]) {
   return defineProject({

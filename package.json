@@ -125,7 +125,7 @@
     "!**/*.tsbuildinfo"
   ],
   "scripts": {
-    "build": "tsc -b",
+    "build": "tsc -b && bun scripts/sync-wasm.ts --dist",
     "typecheck": "tsc -b && tsc -p scripts",
     "clean": "tsc -b --clean",
     "lint": "biome lint .",
@@ -134,7 +134,9 @@
     "test:coverage": "vitest run --coverage",
     "sync:core": "bun scripts/sync-core.ts",
     "check:core": "bun scripts/sync-core.ts --check",
-    "check": "bun run lint && bun run format:check && bun run check:core && bun run typecheck && bun run test",
+    "sync:wasm": "bun scripts/sync-wasm.ts",
+    "check:wasm": "bun scripts/sync-wasm.ts --check",
+    "check": "bun run lint && bun run format:check && bun run check:core && bun run check:wasm && bun run typecheck && bun run test",
     "changeset": "changeset",
     "version-packages": "changeset version",
     "format:check": "bun fmt --check"

@@ -73,11 +73,6 @@ export class CanopyClient<
   out Auth extends TokenSource | undefined = TokenSource | undefined,
 > {
   readonly store: Store = new Store()
-  /**
-   * Settles once the update engine is loaded. It is a separate chunk, fetched right after the client is
-   * created; update layers made before it arrives show once it has.
-   */
-  readonly updateEngine: Promise<void>
   /** File storage at `/storage/v1`, as the signed in user: `client.storage.from("avatars")`. */
   readonly storage: StorageApi
   private readonly options: ClientOptions
@@ -120,10 +115,6 @@ export class CanopyClient<
       ...(options.fetch === undefined ? {} : { fetch: options.fetch }),
     })
     this.store.onRefetch = (coll) => this.queries.refetch(coll)
-    this.updateEngine = import("../core/matcher/update-lite.ts").then(
-      (engine) => this.store.useUpdater((doc, update) => engine.applyUpdate(doc, update)),
-      () => {},
-    )
     this.outbox = new Outbox({
       store: this.store,
       client: options,
@@ -154,6 +145,16 @@ export class CanopyClient<
     this.watchLifecycle()
     this.stopAuth = options.auth?.onChange?.(() => this.reidentify())
     this.connect()
+  }
+
+  /**
+   * Settles once the client core (the Rust matcher, sort, projection and update engine, as WebAssembly or
+   * its JavaScript translation) is loaded. Reading it starts the load; otherwise the client loads the core
+   * after its first live query has painted, or as soon as an optimistic change or a projected query needs
+   * it. Update layers made before it arrives show once it has.
+   */
+  get updateEngine(): Promise<void> {
+    return this.store.loadCore()
   }
 
   /**

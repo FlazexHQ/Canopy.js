@@ -2,8 +2,11 @@ import type { Document } from "canopy.js/protocol"
 import fc from "fast-check"
 import { afterEach, describe, expect, it, vi } from "vitest"
 
+import { loadEngine } from "../../src/client/engine.ts"
 import { Store } from "../../src/client/index.ts"
-import { applyUpdate } from "../../src/core/matcher/index.ts"
+
+const engine = await loadEngine()
+const applyUpdate = (doc: Document, update: Document): Document => engine.applyUpdate(doc, update)
 
 const flush = () => new Promise<void>((resolve) => queueMicrotask(resolve))
 
@@ -22,27 +25,21 @@ afterEach(() => {
 })
 
 describe("optimistic layers", () => {
-  it("shows update layers once the lazily loaded update engine arrives", async () => {
-    const store = new Store()
-    store.addQuery("q", "todos", { filter: { done: true } })
+  it("folds update layers with an installed updater in place of the client core", async () => {
+    const store = new Store(Date.now, (doc) => ({ ...doc, by: "updater" }))
     store.addQuery("all", "todos", {})
-    store.added("todos", 1, { _id: 1, done: false, n: 1 }, "10", ["all"])
-    store.addLayer("m1", { kind: "update", coll: "todos", id: 1, update: { $set: { done: true } } })
-    store.addLayer("m2", { kind: "insert", coll: "todos", id: 2, doc: { _id: 2, done: true } })
-    await flush()
-    expect(store.view("todos", 1)).toEqual({ _id: 1, done: false, n: 1 })
-    expect(ids(store, "q")).toEqual([2])
+    store.added("todos", 1, { _id: 1, n: 1 }, "10", ["all"])
+    store.addLayer("m1", { kind: "update", coll: "todos", id: 1, update: { $inc: { n: 1 } } })
+    expect(store.view("todos", 1)).toEqual({ _id: 1, n: 1, by: "updater" })
     let notified = 0
-    store.listen("q", () => {
+    store.listen("all", () => {
       notified += 1
     })
     store.useUpdater(applyUpdate)
     await flush()
-    expect(store.view("todos", 1)).toEqual({ _id: 1, done: true, n: 1 })
-    expect(ids(store, "q")).toEqual([1, 2])
-    expect(notified).toBeGreaterThan(0)
-    store.dropLayer("m1")
-    expect(store.view("todos", 1)).toEqual({ _id: 1, done: false, n: 1 })
+    expect(store.view("todos", 1)).toEqual({ _id: 1, n: 2 })
+    expect(store.state("all").data).toEqual([{ _id: 1, n: 2 }])
+    expect(notified).toBe(1)
   })
 
   it("shows an optimistic insert in matching queries only, and removes it on rollback", () => {

@@ -1,5 +1,5 @@
+import { type Engine, evaluatesInProcess, loadEngine, loadedEngine } from "../client/engine.ts"
 import type { CanopyClient, Schema } from "../client/index.ts"
-import { isMatcherSafe } from "../core/matcher/lite.ts"
 
 /** Options of {@link watchMistakes}. */
 export interface WarningOptions {
@@ -61,11 +61,16 @@ export function watchMistakes<DB extends Schema<DB>>(
       const filter = frame.q?.filter ?? {}
       const shape = `${collection} ${JSON.stringify(filter)}`
       if (frame.q?.limit === undefined) unlimited.set(String(frame.id), shape)
-      if (!isMatcherSafe(filter))
-        once(
-          `unsafe ${shape}`,
-          `The query on ${collection} ${JSON.stringify(filter)} uses operators the client cannot evaluate, so optimistic writes do not move documents in or out of it until the server answers.`,
-        )
+      const check = (engine: Engine): void => {
+        if (evaluatesInProcess(engine, filter) === false)
+          once(
+            `unsafe ${shape}`,
+            `The query on ${collection} ${JSON.stringify(filter)} uses operators the client cannot evaluate, so optimistic writes do not move documents in or out of it until the server answers.`,
+          )
+      }
+      const engine = loadedEngine()
+      if (engine === undefined) loadEngine().then(check, () => {})
+      else check(engine)
       return
     }
     if (direction === "out" && frame.t === "mut") {

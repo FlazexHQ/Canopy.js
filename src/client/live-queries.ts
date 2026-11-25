@@ -1,4 +1,3 @@
-import { compileProjection } from "../core/matcher/lite.ts"
 import {
   type ClientMessage,
   type ClusterTime,
@@ -92,9 +91,7 @@ export class LiveQueries {
             filter,
             ...(sort === undefined ? {} : { sort: sort }),
             ...(spec.limit === undefined ? {} : { limit: spec.limit }),
-            ...(fields === undefined
-              ? {}
-              : { project: (doc: Document) => compileProjection(fields).apply(doc) }),
+            ...(fields === undefined ? {} : { fields }),
           })
           this.options.send({ t: "sub", id: sub.id, c: collection, q: query })
           const seed = this.hydrated.get(key)
