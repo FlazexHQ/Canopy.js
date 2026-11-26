@@ -320,6 +320,37 @@ describe("the client core", () => {
     }
   })
 
+  it("decides retained documents by their current position when a page is reordered, swapped in place, resized or replaced", async () => {
+    const engine = await loadEngine()
+    const owner = engine.compileFilter({ ownerId: "u1" })
+    const big = engine.compileFilter({ n: { $gt: 1 } })
+    const a = { ownerId: "u1", n: 0 }
+    const b = { ownerId: "u2", n: 5 }
+    const c = { ownerId: "u1", n: 9 }
+    const page = [a, b, c]
+    try {
+      for (let round = 0; round < 3; round += 1) {
+        expect(owner.matchAll(page)).toEqual([true, false, true])
+        expect(big.matchAll(page)).toEqual([false, true, true])
+      }
+      page[0] = b
+      page[1] = a
+      expect(owner.matchAll(page)).toEqual([false, true, true])
+      expect(big.matchAll(page)).toEqual([true, false, true])
+      expect(owner.matchAll([c, b])).toEqual([true, false])
+      expect(owner.matchAll([c, b, a, a])).toEqual([true, false, true, true])
+      expect(owner.matchAll([c])).toEqual([true])
+      const replaced = { ownerId: "u2", n: 0 }
+      expect(owner.matchAll([replaced, b, a])).toEqual([false, false, true])
+      expect(owner.matchAll([replaced, b, a])).toEqual([false, false, true])
+      expect(owner.matchAll([replaced, b, a])).toEqual([false, false, true])
+      expect(owner.matchAll([a, b, c])).toEqual([true, false, true])
+    } finally {
+      owner.free()
+      big.free()
+    }
+  })
+
   it("translates refusals of the core into client errors", async () => {
     const engine = await loadEngine()
     expect(() => engine.compileFilter({ $where: "true" })).toThrow(InvalidQueryError)

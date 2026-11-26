@@ -198,9 +198,22 @@ function calling<T>(call: () => T): T {
   }
 }
 
+/**
+ * The documents one filter last decided through their slots, and those slots. Holding the documents keeps
+ * them alive, so their slots stay assigned to them while this record exists.
+ */
+interface LastBatch {
+  documents: readonly Document[]
+  slots: Uint32Array
+}
+
 /** The core's decisions in document order. A scratch view is valid until the next call. */
 interface Retained {
-  decide(compiled: FilterBinding, documents: readonly Document[]): Uint8Array | Uint32Array
+  decide(
+    compiled: FilterBinding,
+    documents: readonly Document[],
+    last: LastBatch,
+  ): Uint8Array | Uint32Array
 }
 
 /**
@@ -232,7 +245,7 @@ function retainedDocuments(client: ClientBinding): Retained {
     return batch
   }
   return {
-    decide(compiled, documents) {
+    decide(compiled, documents, last) {
       if (collected.length > 0) cache.release(Uint32Array.from(collected.splice(0)))
       const count = documents.length
       if (!batchInUse) {
@@ -244,13 +257,26 @@ function retainedDocuments(client: ClientBinding): Retained {
             capacity = next
           }
           const input = batchView()
+          const previous = last.documents
+          const previousSlots = last.slots
+          let same = count === previous.length
           let index = 0
           for (; index < count; index += 1) {
-            const slot = slots.get(documents[index] as Document)
+            const doc = documents[index] as Document
+            if (doc === previous[index]) {
+              input[index] = previousSlots[index] as number
+              continue
+            }
+            const slot = slots.get(doc)
             if (slot === undefined) break
             input[index] = slot
+            same = false
           }
           if (index === count && input.buffer === client.matchBatchMemory()) {
+            if (!same) {
+              last.documents = documents.slice()
+              last.slots = input.slice(0, count)
+            }
             cache.matchBatch(compiled, count)
             return batchView()
           }
@@ -411,11 +437,12 @@ function createEngine(
     kind,
     compileFilter(filter) {
       const compiled = calling(() => client.Filter.fromBson(encodeDocument(filter)))
+      const last: LastBatch = { documents: [], slots: new Uint32Array(0) }
       return {
         matchAll(documents) {
           const count = documents.length
           if (count === 0) return []
-          const decisions = calling(() => retained.decide(compiled, documents))
+          const decisions = calling(() => retained.decide(compiled, documents, last))
           const out: (boolean | undefined)[] = new Array(count)
           for (let index = 0; index < count; index += 1) {
             const decision = decisions[index]
@@ -424,6 +451,8 @@ function createEngine(
           return out
         },
         free() {
+          last.documents = []
+          last.slots = new Uint32Array(0)
           compiled.free()
         },
       }
