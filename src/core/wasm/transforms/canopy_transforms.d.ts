@@ -35,9 +35,14 @@ export class DocumentPage {
 }
 
 /**
- * Documents decoded once and kept for optimistic updates, each in a numbered slot. An update reads the
- * document of one slot and keeps the result in a new slot, so both versions stay available until released.
- * Release the handle with the generated `free()` method.
+ * Documents decoded once and kept for optimistic updates, each under an identifier that is never reused. An
+ * update reads the document of one identifier and keeps the result under a new one, so both versions stay
+ * available. The cache keeps the 256 documents retained last; an update of an older one reports that it is no
+ * longer retained, and the caller retains it again. Release the handle with the generated `free()` method.
+ *
+ * One update crosses the boundary once: the caller writes the update's BSON into the input space that
+ * `reserveInput` returns and reads the changes at the offset and length that `update` writes into the two
+ * little endian 32 bit words (the width of `usize` in WebAssembly) at `output()`.
  */
 export class UpdateCache {
     free(): void;
@@ -47,23 +52,35 @@ export class UpdateCache {
      */
     constructor();
     /**
-     * Releases slots, so they can hold other documents. Slots that hold nothing are ignored.
+     * The offset in linear memory of the two words where `update` writes the offset and the length of its
+     * changes. It stays valid for the life of the cache.
      */
-    release(slots: Uint32Array | number[]): void;
+    output(): number;
     /**
-     * Decodes one BSON document and retains it. Returns its slot. Throws, and retains nothing, when the BSON
-     * is malformed.
+     * Makes the input space at least `capacity` bytes long and returns its offset in linear memory. The
+     * offset stays valid until the next call of this method.
+     */
+    reserveInput(capacity: number): number;
+    /**
+     * Decodes one BSON document and retains it. Returns its identifier. Throws, and retains nothing, when the
+     * BSON is malformed.
      */
     retain(document: Uint8Array | number[]): number;
     /**
-     * Applies one update (given as BSON) to the document of `slot` and retains the result in a new slot; the
-     * document of `slot` is kept as it was. Returns the new slot as four little endian bytes, followed by a
-     * BSON document whose `c` field holds the top level fields of the result that the update touched and,
-     * when the field names of the result or their order differ from the original's, whose `k` field lists
-     * every field name of the result in order. Throws when MongoDB would refuse the update or when `slot`
-     * holds no document; nothing is retained then.
+     * The error of the last refused update, once, or `undefined`.
      */
-    update(slot: number, update: Uint8Array | number[], now?: string | null): Uint8Array;
+    takeError(): any;
+    /**
+     * Applies the update whose BSON fills the first `length` bytes of the input space to the document of
+     * `id` and retains the result under a new identifier, which it returns; the document of `id` is kept as
+     * it was. The changes are a BSON document whose `c` field holds the top level fields of the result that
+     * the update touched and, when the field names of the result or their order differ from the original's,
+     * whose `k` field lists every field name of the result in order. They stay valid until the next update.
+     * `now` is the clock of `$currentDate` in milliseconds since the Unix epoch. Returns -1 when `id` names
+     * no retained document, and -2 when MongoDB would refuse the update (`takeError` returns the error);
+     * nothing is retained then.
+     */
+    update(id: number, length: number, now?: number | null): number;
 }
 
 /**
@@ -107,9 +124,11 @@ export interface InitOutput {
     readonly sortBson: (a: number, b: number, c: number, d: number, e: number) => void;
     readonly updateBson: (a: number, b: number, c: number, d: number, e: number, f: number, g: number) => void;
     readonly updatecache_new: () => number;
-    readonly updatecache_release: (a: number, b: number, c: number) => void;
+    readonly updatecache_output: (a: number) => number;
+    readonly updatecache_reserveInput: (a: number, b: number) => number;
     readonly updatecache_retain: (a: number, b: number, c: number, d: number) => void;
-    readonly updatecache_update: (a: number, b: number, c: number, d: number, e: number, f: number, g: number) => void;
+    readonly updatecache_takeError: (a: number) => number;
+    readonly updatecache_update: (a: number, b: number, c: number, d: number, e: number) => number;
     readonly __wbindgen_export: (a: number) => void;
     readonly __wbindgen_add_to_stack_pointer: (a: number) => number;
     readonly __wbindgen_export2: (a: number, b: number) => number;
@@ -138,3 +157,6 @@ export function initSync(module: { module: SyncInitInput } | SyncInitInput): Ini
  * @returns {Promise<InitOutput>}
  */
 export default function __wbg_init (module_or_path?: { module_or_path: InitInput | Promise<InitInput> } | InitInput | Promise<InitInput>): Promise<InitOutput>;
+
+/** Returns the current linear memory buffer for the input and changes of an update. */
+export function updateMemory(): ArrayBuffer;

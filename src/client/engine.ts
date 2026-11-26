@@ -76,15 +76,17 @@ interface ClientBinding {
 
 interface UpdateCacheBinding {
   retain(document: Uint8Array): number
-  release(slots: Uint32Array): void
-  update(slot: number, update: Uint8Array, now?: string | null): Uint8Array
+  reserveInput(capacity: number): number
+  output(): number
+  update(id: number, length: number, now?: number | null): number
+  takeError(): unknown
 }
 
 interface TransformsBinding {
   sortBson(spec: Uint8Array, documents: Uint8Array): Uint32Array
   projectBson(spec: Uint8Array, documents: Uint8Array): Uint8Array
-  updateBson(update: Uint8Array, documents: Uint8Array, now?: string | null): Uint8Array
   readonly UpdateCache: new () => UpdateCacheBinding
+  updateMemory(): ArrayBuffer
 }
 
 type WasmSource = URL | BufferSource
@@ -346,46 +348,54 @@ function updated(doc: Document, changes: Document | undefined): Document {
   return out
 }
 
+const NOT_RETAINED = -1
+
 /**
  * Applies optimistic updates on documents kept decoded in the core: a document is decoded once, each update
- * keeps its result in a new slot and returns only the top level fields it touched, so applying another
- * update to the result decodes nothing. A slot is released once its document object is garbage collected;
- * without `FinalizationRegistry`, every update sends the whole document and decodes the whole result.
+ * keeps its result in the core and returns only the top level fields it touched, so applying another update
+ * to the result decodes nothing. The core keeps the documents it retained last and reports one it has
+ * dropped, which is then sent again. An update crosses into the core once: its BSON is written into the
+ * core's input space, and the changes are read where the core leaves them.
  */
 function retainedUpdates(
   transforms: TransformsBinding,
 ): (doc: Document, update: Document) => Document {
-  if (typeof FinalizationRegistry !== "function") {
-    return (doc, update) => {
-      const [result] = decodeDocuments(
-        transforms.updateBson(bsonOf(update), bsonOf(doc), String(Date.now())),
-      )
-      if (result === undefined) throw new InvalidQueryError("The core returned no document")
-      return result
-    }
-  }
   const cache = new transforms.UpdateCache()
-  const slots = new WeakMap<object, number>()
-  const collected: number[] = []
-  const registry = new FinalizationRegistry<number>((slot) => {
-    collected.push(slot)
-  })
-  const keep = (doc: Document, slot: number): void => {
-    slots.set(doc, slot)
-    registry.register(doc, slot)
+  const ids = new WeakMap<object, number>()
+  const output = cache.output()
+  let capacity = 0
+  let input = 0
+  let memory: ArrayBuffer | undefined
+  let bytes = new Uint8Array(0)
+  let words = new Uint32Array(0)
+  const refresh = (): void => {
+    const current = transforms.updateMemory()
+    if (current === memory) return
+    memory = current
+    bytes = new Uint8Array(current)
+    words = new Uint32Array(current, output, 2)
   }
   return (doc, update) => {
-    if (collected.length > 0) cache.release(Uint32Array.from(collected.splice(0)))
-    let slot = slots.get(doc)
-    if (slot === undefined) {
-      slot = cache.retain(bsonOf(doc))
-      keep(doc, slot)
+    const spec = bsonOf(update)
+    if (capacity < spec.length) {
+      capacity = Math.max(spec.length, capacity * 2, 256)
+      input = cache.reserveInput(capacity)
     }
-    const out = cache.update(slot, bsonOf(update), String(Date.now()))
-    if (out.length < 4) throw new InvalidQueryError("The core returned no update")
-    const next = new DataView(out.buffer, out.byteOffset, 4).getUint32(0, true)
-    const result = updated(doc, decodeDocuments(out.subarray(4))[0])
-    keep(result, next)
+    refresh()
+    bytes.set(spec, input)
+    const now = Date.now()
+    const id = ids.get(doc)
+    let next = id === undefined ? NOT_RETAINED : cache.update(id, spec.length, now)
+    if (next === NOT_RETAINED) {
+      const retained = cache.retain(bsonOf(doc))
+      ids.set(doc, retained)
+      next = cache.update(retained, spec.length, now)
+    }
+    if (next < 0) throw cache.takeError() ?? new InvalidQueryError("The core refused the update")
+    refresh()
+    const at = words[0] ?? 0
+    const result = updated(doc, decodeDocuments(bytes.subarray(at, at + (words[1] ?? 0)))[0])
+    ids.set(result, next)
     return result
   }
 }

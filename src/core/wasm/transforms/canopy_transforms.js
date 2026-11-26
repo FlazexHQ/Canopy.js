@@ -176,9 +176,14 @@ export class DocumentPage {
 if (Symbol.dispose) DocumentPage.prototype[Symbol.dispose] = DocumentPage.prototype.free;
 
 /**
- * Documents decoded once and kept for optimistic updates, each in a numbered slot. An update reads the
- * document of one slot and keeps the result in a new slot, so both versions stay available until released.
- * Release the handle with the generated `free()` method.
+ * Documents decoded once and kept for optimistic updates, each under an identifier that is never reused. An
+ * update reads the document of one identifier and keeps the result under a new one, so both versions stay
+ * available. The cache keeps the 256 documents retained last; an update of an older one reports that it is no
+ * longer retained, and the caller retains it again. Release the handle with the generated `free()` method.
+ *
+ * One update crosses the boundary once: the caller writes the update's BSON into the input space that
+ * `reserveInput` returns and reads the changes at the offset and length that `update` writes into the two
+ * little endian 32 bit words (the width of `usize` in WebAssembly) at `output()`.
  */
 export class UpdateCache {
     __destroy_into_raw() {
@@ -201,17 +206,27 @@ export class UpdateCache {
         return this;
     }
     /**
-     * Releases slots, so they can hold other documents. Slots that hold nothing are ignored.
-     * @param {Uint32Array | number[]} slots
+     * The offset in linear memory of the two words where `update` writes the offset and the length of its
+     * changes. It stays valid for the life of the cache.
+     * @returns {number}
      */
-    release(slots) {
-        const ptr0 = passArray32ToWasm0(slots, wasm.__wbindgen_export2);
-        const len0 = WASM_VECTOR_LEN;
-        wasm.updatecache_release(this.__wbg_ptr, ptr0, len0);
+    output() {
+        const ret = wasm.updatecache_output(this.__wbg_ptr);
+        return ret >>> 0;
     }
     /**
-     * Decodes one BSON document and retains it. Returns its slot. Throws, and retains nothing, when the BSON
-     * is malformed.
+     * Makes the input space at least `capacity` bytes long and returns its offset in linear memory. The
+     * offset stays valid until the next call of this method.
+     * @param {number} capacity
+     * @returns {number}
+     */
+    reserveInput(capacity) {
+        const ret = wasm.updatecache_reserveInput(this.__wbg_ptr, capacity);
+        return ret >>> 0;
+    }
+    /**
+     * Decodes one BSON document and retains it. Returns its identifier. Throws, and retains nothing, when the
+     * BSON is malformed.
      * @param {Uint8Array | number[]} document
      * @returns {number}
      */
@@ -221,58 +236,42 @@ export class UpdateCache {
             const ptr0 = passArray8ToWasm0(document, wasm.__wbindgen_export2);
             const len0 = WASM_VECTOR_LEN;
             wasm.updatecache_retain(retptr, this.__wbg_ptr, ptr0, len0);
-            var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
-            var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
-            var r2 = getDataViewMemory0().getInt32(retptr + 4 * 2, true);
-            if (r2) {
-                throw takeObject(r1);
-            }
-            return r0 >>> 0;
-        } finally {
-            wasm.__wbindgen_add_to_stack_pointer(16);
-        }
-    }
-    /**
-     * Applies one update (given as BSON) to the document of `slot` and retains the result in a new slot; the
-     * document of `slot` is kept as it was. Returns the new slot as four little endian bytes, followed by a
-     * BSON document whose `c` field holds the top level fields of the result that the update touched and,
-     * when the field names of the result or their order differ from the original's, whose `k` field lists
-     * every field name of the result in order. Throws when MongoDB would refuse the update or when `slot`
-     * holds no document; nothing is retained then.
-     * @param {number} slot
-     * @param {Uint8Array | number[]} update
-     * @param {string | null} [now]
-     * @returns {Uint8Array}
-     */
-    update(slot, update, now) {
-        try {
-            const retptr = wasm.__wbindgen_add_to_stack_pointer(-16) >>> 0;
-            const val3 = +slot;
-            let ptr0, len0, ptr1, len1;
-            try {
-                ptr0 = passArray8ToWasm0(update, wasm.__wbindgen_export2);
-                len0 = WASM_VECTOR_LEN;
-                ptr1 = isLikeNone(now) ? 0 : passStringToWasm0(now, wasm.__wbindgen_export2, wasm.__wbindgen_export4);
-                len1 = WASM_VECTOR_LEN;
-            } catch (e) {
-                if (ptr1) { wasm.__wbindgen_export3(ptr1, len1 * 1, 1); }
-                if (ptr0) { wasm.__wbindgen_export3(ptr0, len0 * 1, 1); }
-                throw e;
-            }
-            wasm.updatecache_update(retptr, this.__wbg_ptr, val3, ptr0, len0, ptr1, len1);
-            var r0 = getDataViewMemory0().getInt32(retptr + 4 * 0, true);
-            var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
+            var r0 = getDataViewMemory0().getFloat64(retptr + 8 * 0, true);
             var r2 = getDataViewMemory0().getInt32(retptr + 4 * 2, true);
             var r3 = getDataViewMemory0().getInt32(retptr + 4 * 3, true);
             if (r3) {
                 throw takeObject(r2);
             }
-            var v4 = getArrayU8FromWasm0(r0, r1).slice();
-            wasm.__wbindgen_export3(r0, r1 * 1, 1);
-            return v4;
+            return r0;
         } finally {
             wasm.__wbindgen_add_to_stack_pointer(16);
         }
+    }
+    /**
+     * The error of the last refused update, once, or `undefined`.
+     * @returns {any}
+     */
+    takeError() {
+        const ret = wasm.updatecache_takeError(this.__wbg_ptr);
+        return takeObject(ret);
+    }
+    /**
+     * Applies the update whose BSON fills the first `length` bytes of the input space to the document of
+     * `id` and retains the result under a new identifier, which it returns; the document of `id` is kept as
+     * it was. The changes are a BSON document whose `c` field holds the top level fields of the result that
+     * the update touched and, when the field names of the result or their order differ from the original's,
+     * whose `k` field lists every field name of the result in order. They stay valid until the next update.
+     * `now` is the clock of `$currentDate` in milliseconds since the Unix epoch. Returns -1 when `id` names
+     * no retained document, and -2 when MongoDB would refuse the update (`takeError` returns the error);
+     * nothing is retained then.
+     * @param {number} id
+     * @param {number} length
+     * @param {number | null} [now]
+     * @returns {number}
+     */
+    update(id, length, now) {
+        const ret = wasm.updatecache_update(this.__wbg_ptr, id, length, !isLikeNone(now), isLikeNone(now) ? 0 : now);
+        return ret;
     }
 }
 if (Symbol.dispose) UpdateCache.prototype[Symbol.dispose] = UpdateCache.prototype.free;
@@ -522,13 +521,6 @@ function isLikeNone(x) {
     return x === undefined || x === null;
 }
 
-function passArray32ToWasm0(arg, malloc) {
-    const ptr = malloc(arg.length * 4, 4) >>> 0;
-    getUint32ArrayMemory0().set(arg, ptr / 4);
-    WASM_VECTOR_LEN = arg.length;
-    return ptr;
-}
-
 function passArray8ToWasm0(arg, malloc) {
     const ptr = malloc(arg.length * 1, 1) >>> 0;
     getUint8ArrayMemory0().set(arg, ptr / 1);
@@ -713,3 +705,6 @@ async function __wbg_init_once(module_or_path) {
 }
 
 export { initSync, __wbg_init as default };
+
+/** Returns the current linear memory buffer for the input and changes of an update. */
+export function updateMemory() { return wasm.memory.buffer; }

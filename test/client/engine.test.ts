@@ -380,6 +380,28 @@ describe("the client core", () => {
     expect(replaced).toEqual({ _id: 1, x: 1 })
   })
 
+  it("sends a document again once the core has dropped it for newer ones", async () => {
+    const engine = await loadEngine()
+    const original = { _id: "n1", title: "a note", n: 1 }
+    const first = engine.applyUpdate(original, { $inc: { n: 1 } })
+    let other: Record<string, unknown> = { _id: "n2", n: 0 }
+    for (let index = 0; index < 600; index += 1)
+      other = engine.applyUpdate(other, { $inc: { n: 1 } })
+    expect(other).toEqual({ _id: "n2", n: 600 })
+    expect(engine.applyUpdate(original, { $set: { title: "edited" } })).toEqual({
+      _id: "n1",
+      title: "edited",
+      n: 1,
+    })
+    expect(engine.applyUpdate(first, { $inc: { n: 10 } })).toEqual({
+      _id: "n1",
+      title: "a note",
+      n: 12,
+    })
+    expect(() => engine.applyUpdate(first, { $inc: { title: 1 } })).toThrow(InvalidQueryError)
+    expect(engine.applyUpdate(first, { $unset: { title: "" } })).toEqual({ _id: "n1", n: 2 })
+  })
+
   it("keeps a document usable after an update MongoDB would refuse", async () => {
     const engine = await loadEngine()
     const doc = { _id: 1, n: "x", m: 1 }
