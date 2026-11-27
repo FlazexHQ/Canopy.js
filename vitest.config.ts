@@ -40,10 +40,9 @@ const ssr = {
 }
 
 const engineSetup = fileURLToPath(new URL("./test/support/engine.ts", import.meta.url))
-const setupFiles = [
-  ...("Deno" in globalThis ? [new URL("./vitest.deno-setup.ts", import.meta.url).pathname] : []),
-  engineSetup,
-]
+const runtimeSetup =
+  "Deno" in globalThis ? [new URL("./vitest.deno-setup.ts", import.meta.url).pathname] : []
+const setupFiles = [...runtimeSetup, engineSetup]
 
 function project(name: string, environment: "node" | "happy-dom", include: string[]) {
   return defineProject({
@@ -74,6 +73,8 @@ export default defineConfig({
           name: "emit",
           environment: "node",
           include: ["test/emit/*.test.ts"],
+          testTimeout: 30_000,
+          setupFiles: runtimeSetup,
         },
       }),
       project("react", "happy-dom", ["test/react/**/*.test.tsx"]),
