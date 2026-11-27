@@ -3,18 +3,18 @@
   "files": {
     "client/canopy_client.js": "e48607e7f73298b60a3e33b8625fe404c2451edb8d791f3fdf98bd8d6e73281b",
     "client/canopy_client.d.ts": "4a78d9be4a0a5b4728b9df2a6b03e20b8fa4bfb72158f808472dbd8be8de992a",
-    "client/canopy_client_bg.wasm": "dc240b43b1233e330b66546c252210bcf1b6f1345d045274246ed5e387ae86bd",
+    "client/canopy_client_bg.wasm": "51fb4fc8d9303522b380d871ae914b397383f461a8692ba7319c55ef3e63533f",
     "client/canopy_client_js.js": "dd415b6fafcf3f29bc79e880624f0f18944592571c3d1215af297293e3d65d41",
     "client/canopy_client_js.d.ts": "765b67eeac547597f35c2ed47eff4638ded779c55e20d41b027a9616c107f02e",
-    "client/canopy_client_translated.js": "45eedcb12d27e0558a62cd92546bb4e9b4cfea3b77276067e29ab2ce739bac7a",
+    "client/canopy_client_translated.js": "b148f8b1bd00b85cd3d6e8ff80982dd542d14ee017f2c4e4de3a1e8397511b1e",
     "transforms/canopy_transforms.js": "f69521ece108d6f4206b8be788bde9e650b87e6013c6c3b94a462cf7f1d389e3",
     "transforms/canopy_transforms.d.ts": "bc1ae7cf278975581d1506661eeb2a0b1e21e1cb190e0612cc9bee4719c3e4c1",
-    "transforms/canopy_transforms_bg.wasm": "7eb75e60fe27301400a09f32baa8399f29dc557cad4b3fa690cbe1d5d07ef591",
+    "transforms/canopy_transforms_bg.wasm": "13e71931bdb4a2045e7d954e64458b28dce0df6329d49e0485a4a64f1f5fdaa2",
     "transforms/canopy_transforms_js.js": "72b40acd6f73bd43a6e10008bfed87e3fc3d0898ad1861ec92ae4019bd4596cc",
     "transforms/canopy_transforms_js.d.ts": "15043f45b96c76b260637694d6b879ee83a175250b8e6def19b819f8d4c48827",
-    "transforms/canopy_transforms_translated.js": "42392cbaff3ed010e96ea5684f9ffd83d84fc1d99c52cbe5ce6f207948f63200",
+    "transforms/canopy_transforms_translated.js": "8f9392c5c0cf37cb890aa9af66ae5f118bbce109c52ecb26208feed11bf146e1",
     "authoring/canopy_authoring.js": "8680df9f90ff3e087ec6fe690f349d602b9ea440f9a1b53067c78a17ed86896d",
     "authoring/canopy_authoring.d.ts": "e9ab22ed292c7fba0924f7e970aac50751be83a1dd63d54d6cebb129cd011fce",
-    "authoring/canopy_authoring_bg.wasm": "432f1b51c35f3fb60ffe23f96107d7fea3c411e928c673c3ede8bc95772d734d"
+    "authoring/canopy_authoring_bg.wasm": "b9729e5c96f2d8e139c8faf1615ceb701c1ac263a5a97a9788b17c1f3cec6d02"
   }
 }
