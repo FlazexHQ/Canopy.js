@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it } from "vitest"
+import { afterEach, describe, expect, it, vi } from "vitest"
 
 import { createAuth } from "../../src/client/auth.ts"
 import { memoryPersister } from "../../src/client/persist.ts"
@@ -12,26 +12,34 @@ function jwt(claims: Record<string, unknown>): string {
 interface Seen {
   readonly path: string
   readonly authorization: string | null
+  readonly ceremony: string | null
+  readonly credentials: RequestInit["credentials"]
   readonly body: Record<string, unknown> | undefined
 }
 
 const SESSION = { "set-auth-token": "session-token" }
+const CEREMONY = "canopy.two_factor=signed"
 
-/**
- * A fake built in auth server. Codes that work: backup code `backup-1`, TOTP `123456`, emailed code
- * `654321`. `/get-session` hands out a session only when `redirected` is set, like after an OAuth redirect.
- */
-function server(seen: Seen[], state: { redirected: boolean; aal: string }): typeof fetch {
+function server(
+  seen: Seen[],
+  state: { redirected: boolean; aal: string; secondFactor: "header" | "cookie" | undefined },
+): typeof fetch {
   return async (input, init = {}) => {
     const path = new URL(String(input)).pathname.replace("/auth/v1", "")
-    const authorization = new Headers(init.headers).get("authorization")
+    const headers = new Headers(init.headers)
+    const authorization = headers.get("authorization")
+    const ceremony = headers.get("x-canopy-ceremony")
     const body =
       typeof init.body === "string" ? (JSON.parse(init.body) as Record<string, unknown>) : undefined
-    seen.push({ path, authorization, body })
+    seen.push({ path, authorization, ceremony, credentials: init.credentials, body })
     const signedIn = authorization === "Bearer session-token"
     const refused = (code: string) => Response.json({ code, message: code }, { status: 401 })
+    const hasCeremony =
+      state.secondFactor === undefined ||
+      (state.secondFactor === "header" ? ceremony === CEREMONY : init.credentials === "include")
     switch (path) {
       case "/two-factor/verify-backup-code":
+        if (!hasCeremony) return refused("INVALID_TWO_FACTOR_COOKIE")
         return body?.["code"] === "backup-1"
           ? Response.json({ token: "session-token" }, { headers: SESSION })
           : refused("INVALID_BACKUP_CODE")
@@ -42,6 +50,7 @@ function server(seen: Seen[], state: { redirected: boolean; aal: string }): type
           backupCodes: ["backup-1", 2],
         })
       case "/two-factor/verify-totp":
+        if (!hasCeremony) return refused("INVALID_TWO_FACTOR_COOKIE")
         if (body?.["code"] !== "123456") return refused("INVALID_CODE")
         state.aal = "aal2"
         return Response.json({ token: "session-token" }, { headers: SESSION })
@@ -51,9 +60,13 @@ function server(seen: Seen[], state: { redirected: boolean; aal: string }): type
       case "/email-otp/send-verification-otp":
         return new Response(null, { status: 200 })
       case "/sign-in/email-otp":
-        return body?.["otp"] === "654321"
-          ? Response.json({ token: "session-token" }, { headers: SESSION })
-          : refused("INVALID_OTP")
+        if (body?.["otp"] !== "654321") return refused("INVALID_OTP")
+        if (state.secondFactor === "header")
+          return Response.json(
+            { twoFactorRedirect: true, twoFactorMethods: ["totp"] },
+            { headers: { "set-auth-ceremony": CEREMONY } },
+          )
+        return Response.json({ token: "session-token" }, { headers: SESSION })
       case "/sign-in/social":
         return body?.["provider"] === "github"
           ? Response.json({ url: "https://github.test/login/oauth", redirect: false })
@@ -75,9 +88,9 @@ function server(seen: Seen[], state: { redirected: boolean; aal: string }): type
   }
 }
 
-function setup(redirected = false) {
+function setup(redirected = false, secondFactor?: "header" | "cookie") {
   const seen: Seen[] = []
-  const state = { redirected, aal: "aal1" }
+  const state = { redirected, aal: "aal1", secondFactor }
   const auth = createAuth({
     url: "https://api.test/",
     storage: memoryPersister(),
@@ -97,6 +110,41 @@ const originalLocation = locationOf.location
  */
 const replaceableLocation =
   Object.getOwnPropertyDescriptor(globalThis, "location")?.configurable !== false
+
+function callbackPage(search: string): { href(): string; restore(): void } {
+  const browser = globalThis as typeof globalThis & {
+    readonly location?: { readonly href: string }
+    readonly history?: {
+      readonly state: unknown
+      replaceState(state: unknown, title: string, url: string): void
+    }
+  }
+  const location = browser.location
+  const history = browser.history
+  if (location !== undefined && history !== undefined) {
+    const original = location.href
+    const state = history.state
+    history.replaceState(state, "", `${new URL(original).pathname}${search}`)
+    return {
+      href: () => location.href,
+      restore: () => history.replaceState(state, "", original),
+    }
+  }
+  const url = new URL(`https://app.test/callback${search}`)
+  vi.stubGlobal("location", {
+    get href() {
+      return url.href
+    },
+  })
+  vi.stubGlobal("history", {
+    state: null,
+    replaceState(_state: unknown, _title: string, href: string) {
+      url.href = new URL(href, url).href
+    },
+  })
+  return { href: () => url.href, restore: () => vi.unstubAllGlobals() }
+}
+
 afterEach(() => {
   if (replaceableLocation)
     Object.defineProperty(globalThis, "location", { value: originalLocation, configurable: true })
@@ -154,6 +202,55 @@ describe("auth flows of the client", () => {
     )
   })
 
+  it("finishes email code sign in with the second factor header bridge", async () => {
+    const { auth, seen } = setup(false, "header")
+    await expect(auth.signInWithOtp({ email: "a@test.io", otp: "654321" })).rejects.toMatchObject({
+      code: "TWO_FACTOR_REQUIRED",
+      status: 401,
+      twoFactorMethods: ["totp"],
+    })
+    expect(seen.map(({ path }) => path)).toEqual(["/sign-in/email-otp"])
+    expect((await auth.verifyTotp({ code: "123456" })).id).toBe("u1")
+    expect(aalOf(await auth.getToken())).toBe("aal2")
+    expect(seen.slice(1)).toMatchObject([
+      { path: "/two-factor/verify-totp", credentials: "omit", ceremony: CEREMONY },
+      { path: "/token", credentials: "omit", ceremony: null },
+    ])
+  })
+
+  it.each(["totp", "backup code"] as const)(
+    "finishes a redirect with %s using the ceremony cookie only on verification",
+    async (method) => {
+      const page = callbackPage("?keep=1&twoFactorRedirect=true&twoFactorMethods=totp#done")
+      try {
+        const url = new URL(page.href())
+        const { auth, seen } = setup(false, "cookie")
+        await expect(auth.completeRedirect()).rejects.toMatchObject({
+          code: "TWO_FACTOR_REQUIRED",
+          status: 401,
+          twoFactorMethods: ["totp"],
+        })
+        expect(page.href()).toBe(new URL(`${url.pathname}?keep=1#done`, url).href)
+        expect(seen).toEqual([])
+        const user =
+          method === "totp"
+            ? await auth.verifyTotp({ code: "123456" })
+            : await auth.verifyBackupCode({ code: "backup-1" })
+        expect(user.id).toBe("u1")
+        expect(seen).toMatchObject([
+          {
+            path: method === "totp" ? "/two-factor/verify-totp" : "/two-factor/verify-backup-code",
+            credentials: "include",
+            ceremony: null,
+          },
+          { path: "/token", credentials: "omit", ceremony: null },
+        ])
+      } finally {
+        page.restore()
+      }
+    },
+  )
+
   it.runIf(replaceableLocation)(
     "starts an OAuth sign in, navigating when a browser location exists",
     async () => {
@@ -184,9 +281,13 @@ describe("auth flows of the client", () => {
 
   it("picks up the session after a redirect, and reports none without one", async () => {
     expect(await setup(false).auth.completeRedirect()).toBeUndefined()
-    const { auth } = setup(true)
+    const { auth, seen } = setup(true)
     const user = await auth.completeRedirect()
     expect(user?.id).toBe("u1")
     expect(await auth.getToken()).not.toBeNull()
+    expect(seen).toMatchObject([
+      { path: "/get-session", credentials: "include", ceremony: null },
+      { path: "/token", credentials: "omit", authorization: "Bearer session-token" },
+    ])
   })
 })

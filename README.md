@@ -97,6 +97,26 @@ export default collection("todos", {
 })
 ```
 
+## Two factor sign in
+
+`signInWithPassword` and `signInWithOtp` reject with an `AuthError` whose code is
+`TWO_FACTOR_REQUIRED` when the user needs a second factor. Read `error.twoFactorMethods` for the
+available methods, then call `verifyTotp` or `verifyBackupCode` on the same auth instance. The SDK
+carries the ceremony header from the first response into verification.
+
+After an OAuth or OIDC redirect or a magic link, call `completeRedirect()` on the callback page.
+If Canopy requests a second factor, the method removes the ceremony parameters from the URL and
+rejects with the same error. Keep the auth instance for verification. In bearer mode, the SDK
+includes cookies on that verification request and uses the resulting bearer session for token
+requests.
+
+For a callback page on a different origin, add the app's exact origin to Canopy's
+`auth.trustedOrigins`.
+The auth router returns `Access-Control-Allow-Credentials: true` and the matching
+`Access-Control-Allow-Origin` for trusted origins. The callback page and auth endpoint must also
+be same site so the browser can send the `SameSite=Lax` ceremony cookie on the verification
+request.
+
 ## Run Canopy
 
 Install Docker with Compose. In a project that has canopy.js installed, start the development stack with one command once the container images are published:

@@ -5,12 +5,15 @@ import type { Persister, TokenSource } from "./client-types.ts"
 export class AuthError extends Error {
   readonly code: string
   readonly status: number
+  /** The available methods when the code is `TWO_FACTOR_REQUIRED`. */
+  readonly twoFactorMethods?: readonly string[]
 
-  constructor(code: string, status: number, message: string) {
+  constructor(code: string, status: number, message: string, twoFactorMethods?: readonly string[]) {
     super(message)
     this.name = "AuthError"
     this.code = code
     this.status = status
+    if (twoFactorMethods !== undefined) this.twoFactorMethods = twoFactorMethods
   }
 }
 
@@ -52,6 +55,8 @@ interface Cached {
 }
 
 const KEY = "session"
+
+type SecondFactorTransport = "header" | "cookie"
 
 function claimsOf(token: string): Record<string, unknown> {
   const part = token.split(".")[1] ?? ""
@@ -104,6 +109,7 @@ export class CanopyAuth implements TokenSource {
   private subject: string | undefined
   /** The signed cookies of a sign in waiting for its second step (a second factor or a passkey). */
   private ceremony: string | undefined
+  private secondFactorTransport: SecondFactorTransport | undefined
   /** Resolves once the stored session is loaded. */
   readonly ready: Promise<void>
 
@@ -151,17 +157,22 @@ export class CanopyAuth implements TokenSource {
     return this.cached === undefined ? undefined : userOf(this.cached.token)
   }
 
-  private async call(method: string, path: string, body?: unknown): Promise<Response> {
+  private async call(
+    method: string,
+    path: string,
+    body?: unknown,
+    secondFactor?: SecondFactorTransport,
+  ): Promise<Response> {
     await this.ready
     const headers: Record<string, string> = {}
     if (body !== undefined) headers["content-type"] = "application/json"
-    if (this.bearer && this.session !== undefined)
+    if (this.bearer && this.session !== undefined && secondFactor === undefined)
       headers["authorization"] = `Bearer ${this.session.token}`
     if (this.ceremony !== undefined) headers["x-canopy-ceremony"] = this.ceremony
     const response = await this.http(`${this.base}${path}`, {
       method,
       headers,
-      credentials: this.bearer ? "omit" : "include",
+      credentials: !this.bearer || secondFactor === "cookie" ? "include" : "omit",
       ...(body === undefined ? {} : { body: JSON.stringify(body) }),
     })
     const rolled = response.headers.get("set-auth-token")
@@ -208,11 +219,40 @@ export class CanopyAuth implements TokenSource {
 
   /** After a sign in: drop the old access token and fetch one for the new session. */
   private async signedIn(): Promise<AuthUser> {
+    if (this.secondFactorTransport !== undefined) {
+      this.secondFactorTransport = undefined
+      this.ceremony = undefined
+    }
     this.cached = undefined
     const token = await this.refresh()
     if (token === null)
       throw new AuthError("NO_SESSION", 401, "The sign in did not create a session")
     return userOf(token)
+  }
+
+  private requireSecondFactor(methods: readonly string[], transport: SecondFactorTransport): never {
+    this.secondFactorTransport = transport
+    throw new AuthError(
+      "TWO_FACTOR_REQUIRED",
+      401,
+      "Enter the code of the authenticator app",
+      methods,
+    )
+  }
+
+  private async finishFirstFactor(response: Response): Promise<AuthUser> {
+    const body = await this.expect(response)
+    if (body["twoFactorRedirect"] === true) {
+      const methods: unknown = body["twoFactorMethods"]
+      this.ceremony = response.headers.get("set-auth-ceremony") || undefined
+      this.requireSecondFactor(
+        Array.isArray(methods)
+          ? methods.filter((method): method is string => typeof method === "string")
+          : [],
+        "header",
+      )
+    }
+    return this.signedIn()
   }
 
   /**
@@ -288,27 +328,26 @@ export class CanopyAuth implements TokenSource {
     readonly email: string
     readonly password: string
   }): Promise<AuthUser> {
-    const body = await this.expect(await this.call("POST", "/sign-in/email", input))
-    if (body["twoFactorRedirect"] === true)
-      throw new AuthError("TWO_FACTOR_REQUIRED", 401, "Enter the code of the authenticator app")
+    return this.finishFirstFactor(await this.call("POST", "/sign-in/email", input))
+  }
+
+  private async verifySecondFactor(path: string, input: unknown): Promise<AuthUser> {
+    await this.expect(await this.call("POST", path, input, this.secondFactorTransport))
+    this.ceremony = undefined
     return this.signedIn()
   }
 
-  /** Completes a password sign in with the authenticator app's code. `trustDevice` skips it here for 30 days. */
+  /** Completes a sign in with the authenticator app's code. `trustDevice` skips it here for 30 days. */
   async verifyTotp(input: {
     readonly code: string
     readonly trustDevice?: boolean
   }): Promise<AuthUser> {
-    await this.expect(await this.call("POST", "/two-factor/verify-totp", input))
-    this.ceremony = undefined
-    return this.signedIn()
+    return this.verifySecondFactor("/two-factor/verify-totp", input)
   }
 
-  /** Completes a password sign in with one of the single use backup codes. */
+  /** Completes a sign in with one of the single use backup codes. */
   async verifyBackupCode(input: { readonly code: string }): Promise<AuthUser> {
-    await this.expect(await this.call("POST", "/two-factor/verify-backup-code", input))
-    this.ceremony = undefined
-    return this.signedIn()
+    return this.verifySecondFactor("/two-factor/verify-backup-code", input)
   }
 
   /**
@@ -382,10 +421,9 @@ export class CanopyAuth implements TokenSource {
     )
   }
 
-  /** Signs in with the emailed code. */
+  /** Signs in with the emailed code. Rejects with `TWO_FACTOR_REQUIRED` when a second factor is needed. */
   async signInWithOtp(input: { readonly email: string; readonly otp: string }): Promise<AuthUser> {
-    await this.expect(await this.call("POST", "/sign-in/email-otp", input))
-    return this.signedIn()
+    return this.finishFirstFactor(await this.call("POST", "/sign-in/email-otp", input))
   }
 
   /**
@@ -413,9 +451,29 @@ export class CanopyAuth implements TokenSource {
 
   /**
    * After an OAuth redirect or a magic link: turns the session cookie the redirect set into this client's
-   * session. Returns the user, or `undefined` when there is no session.
+   * session. Returns the user, or `undefined` when there is no session. Rejects with
+   * `TWO_FACTOR_REQUIRED` when the redirect requests a second factor. Finish with
+   * {@link verifyTotp} or {@link verifyBackupCode}.
    */
   async completeRedirect(): Promise<AuthUser | undefined> {
+    const browser = globalThis as typeof globalThis & {
+      readonly location?: { readonly href?: string }
+      readonly history?: {
+        readonly state: unknown
+        replaceState(state: unknown, title: string, url: string): void
+      }
+    }
+    const href = browser.location?.href
+    if (href !== undefined) {
+      const url = new URL(href)
+      if (url.searchParams.get("twoFactorRedirect") === "true") {
+        const methods = url.searchParams.get("twoFactorMethods")?.split(",").filter(Boolean) ?? []
+        url.searchParams.delete("twoFactorRedirect")
+        url.searchParams.delete("twoFactorMethods")
+        browser.history?.replaceState(browser.history.state, "", url.href)
+        this.requireSecondFactor(methods, "cookie")
+      }
+    }
     await this.ready
     const response = await this.http(`${this.base}/get-session`, { credentials: "include" })
     const rolled = response.headers.get("set-auth-token")
@@ -452,6 +510,8 @@ export class CanopyAuth implements TokenSource {
       const response = await this.call("POST", "/sign-out", {})
       await response.body?.cancel()
     } finally {
+      this.ceremony = undefined
+      this.secondFactorTransport = undefined
       await this.forget()
     }
   }
