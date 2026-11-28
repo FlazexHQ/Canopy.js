@@ -97,6 +97,21 @@ export default collection("todos", {
 })
 ```
 
+## Verify an email address after sign up
+
+When email verification is enabled (the default), Canopy emails a link after password sign up.
+In cookie mode, open the link in the same browser profile that signed up. The browser sends the
+sign up proof cookie, so Canopy keeps the password chosen at sign up.
+
+In bearer mode, use `sendVerificationOtp({ email })` to email a verification code, then call
+`verifyEmailWithOtp({ email, otp })` to verify the address and sign in. Use the auth instance that
+signed up, or configure the same auth storage across reloads. The SDK sends the sign up proof
+with the code so Canopy keeps the password chosen at sign up.
+
+If the link is opened in another browser or device, or the account was created in bearer mode,
+Canopy verifies the address, removes the original password and ends the account's existing
+sessions. The user must reset their password before signing in with a password again.
+
 ## Two factor sign in
 
 `signInWithPassword` and `signInWithOtp` reject with an `AuthError` whose code is

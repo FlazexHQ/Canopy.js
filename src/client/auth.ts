@@ -55,6 +55,8 @@ interface Cached {
 }
 
 const KEY = "session"
+const SIGN_UP = "sign-up"
+const SIGN_UP_PROOFS = 5
 
 type SecondFactorTransport = "header" | "cookie"
 
@@ -110,6 +112,7 @@ export class CanopyAuth implements TokenSource {
   /** The signed cookies of a sign in waiting for its second step (a second factor or a passkey). */
   private ceremony: string | undefined
   private secondFactorTransport: SecondFactorTransport | undefined
+  private signUpProofs: readonly string[] = []
   /** Resolves once the stored session is loaded. */
   readonly ready: Promise<void>
 
@@ -126,6 +129,21 @@ export class CanopyAuth implements TokenSource {
   }
 
   private async load(): Promise<void> {
+    const proofs = await this.options.storage?.get("auth", SIGN_UP)
+    if (proofs !== undefined) {
+      try {
+        const parsed: unknown = JSON.parse(proofs)
+        if (Array.isArray(parsed)) {
+          const valid = parsed.filter(
+            (proof): proof is string =>
+              typeof proof === "string" && /^[!-~]+$/.test(proof) && !proof.includes(","),
+          )
+          this.signUpProofs = [...new Set(valid)].slice(0, SIGN_UP_PROOFS)
+        }
+      } catch {
+        await this.options.storage?.delete("auth", SIGN_UP)
+      }
+    }
     const text = await this.options.storage?.get("auth", KEY)
     if (text === undefined) return
     try {
@@ -169,6 +187,8 @@ export class CanopyAuth implements TokenSource {
     if (this.bearer && this.session !== undefined && secondFactor === undefined)
       headers["authorization"] = `Bearer ${this.session.token}`
     if (this.ceremony !== undefined) headers["x-canopy-ceremony"] = this.ceremony
+    if (path === "/email-otp/verify-email" && this.signUpProofs.length > 0)
+      headers["x-canopy-sign-up"] = this.signUpProofs.join(", ")
     const response = await this.http(`${this.base}${path}`, {
       method,
       headers,
@@ -179,7 +199,17 @@ export class CanopyAuth implements TokenSource {
     if (this.bearer && rolled !== null && rolled !== "") await this.store(rolled)
     const ceremony = response.headers.get("set-auth-ceremony")
     if (ceremony !== null && ceremony !== "") this.ceremony = ceremony
+    const proof = response.headers.get("set-auth-sign-up")
+    if (proof !== null && proof !== "") await this.keepSignUpProof(proof)
     return response
+  }
+
+  private async keepSignUpProof(proof: string): Promise<void> {
+    this.signUpProofs = [proof, ...this.signUpProofs.filter((kept) => kept !== proof)].slice(
+      0,
+      SIGN_UP_PROOFS,
+    )
+    await this.options.storage?.set("auth", SIGN_UP, JSON.stringify(this.signUpProofs))
   }
 
   private async failure(response: Response): Promise<AuthError | CanopyError> {
@@ -419,6 +449,32 @@ export class CanopyAuth implements TokenSource {
         type: "sign-in",
       }),
     )
+  }
+
+  /** Emails a 6 digit code that verifies the address, for {@link verifyEmailWithOtp}. */
+  async sendVerificationOtp(input: { readonly email: string }): Promise<void> {
+    await this.expect(
+      await this.call("POST", "/email-otp/send-verification-otp", {
+        email: input.email,
+        type: "email-verification",
+      }),
+    )
+  }
+
+  /**
+   * Verifies the address with the emailed code and signs in. The client presents the proof Canopy gave it
+   * when it signed the account up, so the password chosen at sign up stays. The proof survives a reload
+   * when `storage` is configured. Verified
+   * without that proof, for example after signing up on another device, Canopy removes the account's
+   * password, because whoever chose it may not control the address. The user then sets a new one with a
+   * password reset.
+   */
+  async verifyEmailWithOtp(input: {
+    readonly email: string
+    readonly otp: string
+  }): Promise<AuthUser> {
+    await this.expect(await this.call("POST", "/email-otp/verify-email", input))
+    return this.signedIn()
   }
 
   /** Signs in with the emailed code. Rejects with `TWO_FACTOR_REQUIRED` when a second factor is needed. */
