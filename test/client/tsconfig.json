@@ -9,9 +9,9 @@
     "declarationMap": false,
     "outDir": "../../node_modules/.cache/test-types/client",
     "tsBuildInfoFile": "../../node_modules/.cache/test-types/client/.tsbuildinfo",
-    "types": ["node"]
+    "types": ["node", "vite/client"]
   },
   "include": ["."],
   "exclude": ["registered"],
-  "references": [{ "path": "../../src" }]
+  "references": [{ "path": "../../src" }, { "path": "../support" }]
 }

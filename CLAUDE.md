@@ -27,8 +27,12 @@ Canopy (the platform: server, Studio, CLI, Rust core) lives in its own repositor
 - `src/cli`: the server only stack CLI, with its own TypeScript project. Its Compose template and
   Caddyfile live in `templates/cli`.
 - `test/<module>`: Vitest suites per module; `test/vectors` holds the vendored protocol conformance vectors and
-  `test/support/vectors.ts` replays them through the client. Tests import the package by its own name
-  (`canopy.js`, `canopy.js/react`); `vitest.config.ts` aliases each name to its source.
+  `test/support/vectors.ts` replays them through the client. The client tests also replay Canopy's matcher
+  conformance cases from `../Canopy/conformance` (or `CANOPY_REPO`). Tests load fixtures through Vite (JSON
+  and `?raw` imports, `import.meta.glob`) rather than `node:fs`, and take fresh module copies with
+  `freshGraph()` (`test/support/fresh.ts`) rather than `vi.resetModules()`, so the same suites run in
+  `vitest.browser.config.ts`. Under happy-dom the core runs as its JavaScript translation. Tests import the
+  package by its own name (`canopy.js`, `canopy.js/react`); `vitest.shared.ts` aliases each name to its source.
 - `examples/`: apps built on canopy.js that run against the Canopy container stack.
 
 The package exports its sources under the `canopy-js-source` condition (only this repository's tests use it)
@@ -43,6 +47,8 @@ bun install --frozen-lockfile
 bun run check          # lint, format check, core layout and artifact checks, typecheck and tests
 bun run build          # tsc -b into dist/
 bun run test           # vitest run
+bun run test:browser   # client and binding suites in Chromium, Firefox and WebKit (Playwright)
+bun run test:browser --browser=firefox   # one browser; install them with bun run test:browser:install
 bun run lint           # biome lint (formatting is bun fmt)
 bun run format         # bun fmt
 ```

@@ -6,6 +6,19 @@ import {
   type WebSocketLike,
 } from "../../src/client/index.ts"
 
+/**
+ * Advances fake time by `ms` in steps of one default heartbeat, letting promise callbacks run after each step.
+ * `vi.advanceTimersByTimeAsync` instead yields to a real timer after every fake one, which browsers clamp to
+ * 4 ms, so simulating weeks of heartbeats there takes many minutes.
+ */
+async function advance(ms: number): Promise<void> {
+  const step = 25_000
+  for (let elapsed = 0; elapsed < ms; elapsed += step) {
+    vi.advanceTimersByTime(Math.min(step, ms - elapsed))
+    for (let round = 0; round < 5; round += 1) await Promise.resolve()
+  }
+}
+
 /** A socket the test drives: it opens on demand and records what the client sends. */
 class FakeSocket implements WebSocketLike {
   static all: FakeSocket[] = []
@@ -191,12 +204,12 @@ describe("connection lifecycle", () => {
     }
     await socket.accept()
     const auths = () => socket.sent.filter((m) => m["t"] === "auth")
-    await vi.advanceTimersByTimeAsync(day)
+    await advance(day)
     expect(auths()).toEqual([])
-    await vi.advanceTimersByTimeAsync(46 * day)
+    await advance(46 * day)
     expect(auths()).toEqual([])
     current = token(60 * day)
-    await vi.advanceTimersByTimeAsync(2 * day)
+    await advance(2 * day)
     expect(auths()).toEqual([{ t: "auth", token: current }])
     expect(FakeSocket.all).toHaveLength(1)
     client.close()

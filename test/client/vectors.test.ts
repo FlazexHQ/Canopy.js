@@ -1,25 +1,8 @@
-import { readdirSync, readFileSync } from "node:fs"
-import { fileURLToPath } from "node:url"
-
 import { decode, encodeMessage, isErrorCode, stringify } from "canopy.js/protocol"
 import { describe, expect, it } from "vitest"
 
 import { CanopyClient, type QueryState, type WebSocketLike } from "../../src/client/index.ts"
-
-interface Vector {
-  readonly name: string
-  readonly description: string
-  readonly subscriptions: readonly {
-    c: string
-    filter: Record<string, unknown>
-    sort?: Record<string, 1 | -1>
-  }[]
-  readonly steps: readonly {
-    readonly server: readonly unknown[]
-    readonly expect: Readonly<Record<string, { status: string; data: unknown[]; error?: string }>>
-    readonly sent?: readonly string[]
-  }[]
-}
+import { loadVectors, type Vector } from "../support/vectors.ts"
 
 class FakeSocket implements WebSocketLike {
   static last: FakeSocket | undefined
@@ -45,11 +28,7 @@ class FakeSocket implements WebSocketLike {
   }
 }
 
-const dir = fileURLToPath(new URL("../vectors/", import.meta.url))
-const vectors: Vector[] = readdirSync(dir)
-  .filter((name) => name.endsWith(".json"))
-  .sort()
-  .map((name) => JSON.parse(readFileSync(`${dir}${name}`, "utf8")) as Vector)
+const vectors: Vector[] = loadVectors()
 
 const flush = async (): Promise<void> => {
   for (let i = 0; i < 5; i += 1) await Promise.resolve()

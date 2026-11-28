@@ -1,11 +1,14 @@
-import { readdirSync, readFileSync } from "node:fs"
-import { join } from "node:path"
-import { fileURLToPath } from "node:url"
-
 import { InvalidQueryError } from "canopy.js/protocol"
 import { afterEach, describe, expect, it, vi } from "vitest"
 
 import { loadEngine } from "../../src/client/engine.ts"
+import { freshGraph } from "../support/fresh.ts"
+
+const owned = ["client", "react", "vue", "svelte", "solid", "tanstack-db", "devtools"]
+const sources = import.meta.glob<string>(
+  "../../src/{client,react,vue,svelte,solid,tanstack-db,devtools}/**/*.{ts,tsx,svelte}",
+  { query: "?raw", import: "default", eager: true },
+)
 
 const flush = async (): Promise<void> => {
   for (let round = 0; round < 5; round += 1) await Promise.resolve()
@@ -18,9 +21,9 @@ afterEach(() => {
 
 describe("the client core", () => {
   it("renders the first snapshot in server order without loading the core", async () => {
-    vi.resetModules()
-    const fresh = await import("../../src/client/store.ts")
-    const engine = await import("../../src/client/engine.ts")
+    const graph = freshGraph()
+    const fresh = await graph.load<typeof import("../../src/client/store.ts")>("client/store.ts")
+    const engine = await graph.load<typeof import("../../src/client/engine.ts")>("client/engine.ts")
     expect(engine.loadedEngine()).toBeUndefined()
     const store = new fresh.Store()
     store.addQuery("other", "todos", {})
@@ -45,9 +48,9 @@ describe("the client core", () => {
   })
 
   it("keeps server order for a snapshot resubscribed before any member arrived", async () => {
-    vi.resetModules()
-    const fresh = await import("../../src/client/store.ts")
-    const engine = await import("../../src/client/engine.ts")
+    const graph = freshGraph()
+    const fresh = await graph.load<typeof import("../../src/client/store.ts")>("client/store.ts")
+    const engine = await graph.load<typeof import("../../src/client/engine.ts")>("client/engine.ts")
     const store = new fresh.Store()
     store.addQuery("q", "todos", { sort: { rank: -1 } })
     store.beginResync("q")
@@ -62,9 +65,9 @@ describe("the client core", () => {
   })
 
   it("loads the core after the first live query has painted", async () => {
-    vi.resetModules()
-    const fresh = await import("../../src/client/store.ts")
-    const engine = await import("../../src/client/engine.ts")
+    const graph = freshGraph()
+    const fresh = await graph.load<typeof import("../../src/client/store.ts")>("client/store.ts")
+    const engine = await graph.load<typeof import("../../src/client/engine.ts")>("client/engine.ts")
     const store = new fresh.Store()
     store.addQuery("q", "todos", {})
     store.listen("q", () => {})
@@ -76,9 +79,11 @@ describe("the client core", () => {
   })
 
   it("supports immediate optimistic membership changes when the first query becomes ready", async () => {
-    vi.resetModules()
-    const { Store } = await import("../../src/client/store.ts")
-    const { loadedEngine } = await import("../../src/client/engine.ts")
+    const graph = freshGraph()
+    const { Store } =
+      await graph.load<typeof import("../../src/client/store.ts")>("client/store.ts")
+    const { loadedEngine } =
+      await graph.load<typeof import("../../src/client/engine.ts")>("client/engine.ts")
     vi.stubGlobal("requestAnimationFrame", () => 1)
     const store = new Store()
     store.addQuery("open", "todos", { filter: { done: false }, sort: { rank: 1 } })
@@ -106,9 +111,9 @@ describe("the client core", () => {
   })
 
   it("holds a query whose member changed under its sort until the core sorts it", async () => {
-    vi.resetModules()
-    const fresh = await import("../../src/client/store.ts")
-    const engine = await import("../../src/client/engine.ts")
+    const graph = freshGraph()
+    const fresh = await graph.load<typeof import("../../src/client/store.ts")>("client/store.ts")
+    const engine = await graph.load<typeof import("../../src/client/engine.ts")>("client/engine.ts")
     const store = new fresh.Store()
     store.addQuery("q", "todos", { sort: { rank: -1 } })
     store.added("todos", 1, { _id: 1, rank: 3 }, "1", ["q"])
@@ -128,9 +133,9 @@ describe("the client core", () => {
   })
 
   it("holds a member added after the snapshot until the core places it", async () => {
-    vi.resetModules()
-    const fresh = await import("../../src/client/store.ts")
-    const engine = await import("../../src/client/engine.ts")
+    const graph = freshGraph()
+    const fresh = await graph.load<typeof import("../../src/client/store.ts")>("client/store.ts")
+    const engine = await graph.load<typeof import("../../src/client/engine.ts")>("client/engine.ts")
     const store = new fresh.Store()
     store.addQuery("q", "todos", { sort: { rank: -1 } })
     store.added("todos", 1, { _id: 1, rank: 3 }, "1", ["q"])
@@ -150,9 +155,9 @@ describe("the client core", () => {
   })
 
   it("keeps rendering in server order when a change cannot move a member", async () => {
-    vi.resetModules()
-    const fresh = await import("../../src/client/store.ts")
-    const engine = await import("../../src/client/engine.ts")
+    const graph = freshGraph()
+    const fresh = await graph.load<typeof import("../../src/client/store.ts")>("client/store.ts")
+    const engine = await graph.load<typeof import("../../src/client/engine.ts")>("client/engine.ts")
     const store = new fresh.Store()
     store.addQuery("q", "todos", {})
     store.added("todos", "b", { _id: "b", n: 1 }, "1", ["q"])
@@ -167,9 +172,9 @@ describe("the client core", () => {
   })
 
   it("holds a resync and an optimistic change until the core arrives", async () => {
-    vi.resetModules()
-    const fresh = await import("../../src/client/store.ts")
-    const engine = await import("../../src/client/engine.ts")
+    const graph = freshGraph()
+    const fresh = await graph.load<typeof import("../../src/client/store.ts")>("client/store.ts")
+    const engine = await graph.load<typeof import("../../src/client/engine.ts")>("client/engine.ts")
     const store = new fresh.Store()
     store.addQuery("q", "todos", { filter: { done: true } })
     store.addQuery("all", "todos", {})
@@ -201,9 +206,9 @@ describe("the client core", () => {
   })
 
   it("renders a projected query once the core it starts loading arrives", async () => {
-    vi.resetModules()
-    const fresh = await import("../../src/client/store.ts")
-    const engine = await import("../../src/client/engine.ts")
+    const graph = freshGraph()
+    const fresh = await graph.load<typeof import("../../src/client/store.ts")>("client/store.ts")
+    const engine = await graph.load<typeof import("../../src/client/engine.ts")>("client/engine.ts")
     const store = new fresh.Store()
     store.addQuery("q", "todos", { fields: { title: 1 } })
     store.added("todos", 1, { _id: 1, title: "a", body: "long" }, "1", ["q"])
@@ -216,9 +221,9 @@ describe("the client core", () => {
   })
 
   it("renders cached documents in their order, then holds the snapshot until the core arrives", async () => {
-    vi.resetModules()
-    const fresh = await import("../../src/client/store.ts")
-    const engine = await import("../../src/client/engine.ts")
+    const graph = freshGraph()
+    const fresh = await graph.load<typeof import("../../src/client/store.ts")>("client/store.ts")
+    const engine = await graph.load<typeof import("../../src/client/engine.ts")>("client/engine.ts")
     const store = new fresh.Store()
     store.addQuery("q", "todos", { sort: { rank: 1 } })
     store.seed("q", [
@@ -242,9 +247,9 @@ describe("the client core", () => {
   })
 
   it("fails a query whose filter is invalid when the core arrives", async () => {
-    vi.resetModules()
-    const fresh = await import("../../src/client/store.ts")
-    const engine = await import("../../src/client/engine.ts")
+    const graph = freshGraph()
+    const fresh = await graph.load<typeof import("../../src/client/store.ts")>("client/store.ts")
+    const engine = await graph.load<typeof import("../../src/client/engine.ts")>("client/engine.ts")
     const store = new fresh.Store()
     store.addQuery("q", "todos", { filter: { a: { $bogus: 1 } } })
     await engine.loadEngine()
@@ -281,7 +286,7 @@ describe("the client core", () => {
   })
 
   it("falls back to the JavaScript translation when WebAssembly may not compile", async () => {
-    vi.resetModules()
+    const graph = freshGraph()
     const { WebAssembly: host } = globalThis as unknown as {
       readonly WebAssembly: {
         instantiate(...args: unknown[]): Promise<unknown>
@@ -292,7 +297,8 @@ describe("the client core", () => {
     const refusal = () => Promise.reject(new host.CompileError("Refused to compile WebAssembly"))
     vi.spyOn(host, "instantiate").mockImplementation(refusal)
     vi.spyOn(host, "instantiateStreaming").mockImplementation(refusal)
-    const { loadEngine: fresh } = await import("../../src/client/engine.ts")
+    const { loadEngine: fresh } =
+      await graph.load<typeof import("../../src/client/engine.ts")>("client/engine.ts")
     const engine = await fresh()
     expect(engine.kind).toBe("js")
     const filter = engine.compileFilter({ n: { $gt: 1 } })
@@ -444,25 +450,19 @@ describe("the client core", () => {
 
 describe("the client sources", () => {
   it("import no TypeScript implementation of the matcher, query, policy, schema or config, nor the authoring module", () => {
-    const src = fileURLToPath(new URL("../../src/", import.meta.url))
-    const owned = ["client", "react", "vue", "svelte", "solid", "tanstack-db", "devtools"]
-    const offending: string[] = []
-    for (const folder of owned) {
-      for (const entry of readdirSync(join(src, folder), {
-        recursive: true,
-        withFileTypes: true,
-      })) {
-        if (!entry.isFile() || !/\.(ts|tsx|svelte)$/.test(entry.name)) continue
-        const path = join(entry.parentPath, entry.name)
-        const text = readFileSync(path, "utf8")
-        if (
-          /core\/(matcher|query|policy|schema|config)\/|\.\.\/(schema|policy|emit)\/|wasm\/authoring/.test(
-            text,
-          )
-        )
-          offending.push(path)
-      }
-    }
+    const files = Object.entries(sources)
+    for (const folder of owned)
+      expect(
+        files.some(([path]) => path.startsWith(`../../src/${folder}/`)),
+        folder,
+      ).toBe(true)
+    const offending = files
+      .filter(([, text]) =>
+        /core\/(matcher|query|policy|schema|config)\/|\.\.\/(schema|policy|emit)\/|wasm\/authoring/.test(
+          text,
+        ),
+      )
+      .map(([path]) => path)
     expect(offending).toEqual([])
   })
 })

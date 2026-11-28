@@ -91,8 +91,15 @@ const aalOf = (token: string | null): unknown =>
 
 const locationOf = globalThis as { location?: unknown }
 const originalLocation = locationOf.location
+/**
+ * A page's own `location` cannot be replaced, and assigning it would navigate away from the test page, so
+ * the navigation is only observable where the runtime has no fixed `location` (Bun, Node.js, Deno).
+ */
+const replaceableLocation =
+  Object.getOwnPropertyDescriptor(globalThis, "location")?.configurable !== false
 afterEach(() => {
-  Object.defineProperty(globalThis, "location", { value: originalLocation, configurable: true })
+  if (replaceableLocation)
+    Object.defineProperty(globalThis, "location", { value: originalLocation, configurable: true })
 })
 
 describe("auth flows of the client", () => {
@@ -147,30 +154,33 @@ describe("auth flows of the client", () => {
     )
   })
 
-  it("starts an OAuth sign in, navigating when a browser location exists", async () => {
-    const { auth, seen } = setup()
-    expect(
-      await auth.signInWithOAuth({ provider: "github", callbackURL: "https://app.test/cb" }),
-    ).toBe("https://github.test/login/oauth")
-    expect(seen.at(-1)?.body).toEqual({
-      provider: "github",
-      callbackURL: "https://app.test/cb",
-      disableRedirect: true,
-    })
-    const visited: string[] = []
-    const location = {
-      assign(this: unknown, url: string) {
-        expect(this).toBe(location)
-        visited.push(url)
-      },
-    }
-    Object.defineProperty(globalThis, "location", { value: location, configurable: true })
-    await auth.signInWithOAuth({ provider: "github", callbackURL: "https://app.test/cb" })
-    expect(visited).toEqual(["https://github.test/login/oauth"])
-    await expect(
-      auth.signInWithOAuth({ provider: "unknown", callbackURL: "https://app.test/cb" }),
-    ).rejects.toMatchObject({ code: "INVALID_RESPONSE", status: 500 })
-  })
+  it.runIf(replaceableLocation)(
+    "starts an OAuth sign in, navigating when a browser location exists",
+    async () => {
+      const { auth, seen } = setup()
+      expect(
+        await auth.signInWithOAuth({ provider: "github", callbackURL: "https://app.test/cb" }),
+      ).toBe("https://github.test/login/oauth")
+      expect(seen.at(-1)?.body).toEqual({
+        provider: "github",
+        callbackURL: "https://app.test/cb",
+        disableRedirect: true,
+      })
+      const visited: string[] = []
+      const location = {
+        assign(this: unknown, url: string) {
+          expect(this).toBe(location)
+          visited.push(url)
+        },
+      }
+      Object.defineProperty(globalThis, "location", { value: location, configurable: true })
+      await auth.signInWithOAuth({ provider: "github", callbackURL: "https://app.test/cb" })
+      expect(visited).toEqual(["https://github.test/login/oauth"])
+      await expect(
+        auth.signInWithOAuth({ provider: "unknown", callbackURL: "https://app.test/cb" }),
+      ).rejects.toMatchObject({ code: "INVALID_RESPONSE", status: 500 })
+    },
+  )
 
   it("picks up the session after a redirect, and reports none without one", async () => {
     expect(await setup(false).auth.completeRedirect()).toBeUndefined()

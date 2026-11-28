@@ -9,7 +9,7 @@
     "declarationMap": false,
     "outDir": "../../node_modules/.cache/test-types/support",
     "tsBuildInfoFile": "../../node_modules/.cache/test-types/support/.tsbuildinfo",
-    "types": ["node"]
+    "types": ["node", "vite/client"]
   },
   "include": ["."],
 

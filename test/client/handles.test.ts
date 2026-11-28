@@ -16,18 +16,41 @@ class SilentSocket implements WebSocketLike {
   }
 }
 
+interface RejectionHost {
+  readonly process?: {
+    on(event: "unhandledRejection", listener: (reason: unknown) => void): unknown
+    off(event: "unhandledRejection", listener: (reason: unknown) => void): unknown
+  }
+  addEventListener(type: "unhandledrejection", listener: (event: { reason: unknown }) => void): void
+  removeEventListener(
+    type: "unhandledrejection",
+    listener: (event: { reason: unknown }) => void,
+  ): void
+}
+
+/** Reports unhandled rejections to `record` until the returned function is called. */
+function watchUnhandled(record: (reason: unknown) => void): () => void {
+  const host = globalThis as unknown as RejectionHost
+  const runtime = host.process
+  if (runtime !== undefined) {
+    runtime.on("unhandledRejection", record)
+    return () => runtime.off("unhandledRejection", record)
+  }
+  const listener = (event: { reason: unknown }): void => record(event.reason)
+  host.addEventListener("unhandledrejection", listener)
+  return () => host.removeEventListener("unhandledrejection", listener)
+}
+
 describe("mutation handles", () => {
   const unhandled: unknown[] = []
-  const record = (reason: unknown): void => {
-    unhandled.push(reason)
-  }
+  let stopWatching = (): void => {}
   afterEach(() => {
-    process.off("unhandledRejection", record)
+    stopWatching()
     unhandled.length = 0
   })
 
   it("never raise an unhandled rejection when they are dropped", async () => {
-    process.on("unhandledRejection", record)
+    stopWatching = watchUnhandled((reason) => unhandled.push(reason))
     const client = createClient({
       url: "http://canopy.test",
       publishableKey: "pk",

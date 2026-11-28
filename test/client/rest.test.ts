@@ -9,6 +9,7 @@ import {
   ValidationError,
 } from "../../src/client/index.ts"
 import { createRestClient, type RestClient, type RestPage } from "../../src/client/rest/index.ts"
+import { freshGraph } from "../support/fresh.ts"
 
 interface Todo {
   _id: ObjectId
@@ -300,8 +301,9 @@ describe("the REST entry point", () => {
     Reflect.deleteProperty(globalThis, "WebSocket")
     try {
       expect("WebSocket" in globalThis).toBe(false)
-      vi.resetModules()
-      const rest = await import("../../src/client/rest/index.ts")
+      const graph = freshGraph()
+      const rest =
+        await graph.load<typeof import("../../src/client/rest/index.ts")>("client/rest/index.ts")
       const { fetch } = fakeFetch(json(page1))
       const result = await rest
         .createRestClient({ url: "http://canopy.test", publishableKey: "pk", fetch })

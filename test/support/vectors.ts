@@ -1,6 +1,3 @@
-import { readdirSync, readFileSync } from "node:fs"
-import { fileURLToPath, URL as NodeUrl } from "node:url"
-
 import { CanopyClient, type QueryState, type WebSocketLike } from "canopy.js"
 import { isErrorCode, stringify } from "canopy.js/protocol"
 import { expect } from "vitest"
@@ -24,16 +21,19 @@ export interface Vector {
   }[]
 }
 
+const vectorFiles = import.meta.glob<Vector>("../vectors/*.json", {
+  eager: true,
+  import: "default",
+})
+
 /**
- * Every protocol vector, in file name order. Node's `URL` is used on purpose: DOM test environments replace
- * the global one.
+ * Every protocol vector, in file name order. They load through Vite's module graph, so the same code runs on
+ * Bun, Node.js, Deno and in browsers.
  */
 export function loadVectors(): Vector[] {
-  const dir = fileURLToPath(new NodeUrl("../vectors/", import.meta.url))
-  return readdirSync(dir)
-    .filter((name) => name.endsWith(".json"))
-    .sort()
-    .map((name) => JSON.parse(readFileSync(`${dir}${name}`, "utf8")) as Vector)
+  return Object.entries(vectorFiles)
+    .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
+    .map(([, vector]) => vector)
 }
 
 class VectorSocket implements WebSocketLike {

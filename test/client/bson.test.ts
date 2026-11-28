@@ -1,7 +1,3 @@
-import { readFileSync } from "node:fs"
-import { join } from "node:path"
-import { fileURLToPath } from "node:url"
-
 import {
   Binary,
   BSONRegExp,
@@ -21,6 +17,7 @@ import { describe, expect, it } from "vitest"
 
 import { decodeDocuments, encodeDocument, encodeDocumentBatch } from "../../src/client/bson.ts"
 import { bsonToEjson, ejsonToBson } from "../../src/core/wasm/client/canopy_client_js.js"
+import { matcherFixture } from "../support/conformance.ts"
 
 it("encodes a growing batch when a getter also encodes a document", () => {
   const text = "🦉".repeat(600)
@@ -33,12 +30,6 @@ it("encodes a growing batch when a getter also encodes a document", () => {
   const batch = encodeDocumentBatch([{ count: 1 }, doc, { empty: null }])
   expect(decodeDocuments(batch)).toEqual([{ count: 1 }, { text }, { empty: null }])
 })
-
-const matcher = join(
-  process.env["CANOPY_REPO"] ?? fileURLToPath(new URL("../../../Canopy", import.meta.url)),
-  "conformance",
-  "matcher",
-)
 
 /** What the Rust codec reads from BSON, in the client's value model. */
 function rustValue(bytes: Uint8Array): string {
@@ -110,8 +101,8 @@ const { document } = fc.letrec((tie) => ({
 }))
 
 describe("the client's BSON codec", () => {
-  it("encodes every recorded conformance document as the Rust codec does, and reads it back", () => {
-    const { documents } = JSON.parse(readFileSync(join(matcher, "filters.json"), "utf8")) as {
+  it("encodes every recorded conformance document as the Rust codec does, and reads it back", async () => {
+    const { documents } = (await matcherFixture("filters")) as {
       readonly documents: readonly string[]
     }
     let compared = 0

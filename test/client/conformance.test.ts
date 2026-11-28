@@ -1,26 +1,18 @@
-import { readFileSync } from "node:fs"
-import { join } from "node:path"
-import { fileURLToPath } from "node:url"
-
 import { canonicalString, type Document, decode, InvalidQueryError } from "canopy.js/protocol"
-import { describe, expect, it, vi } from "vitest"
+import { describe, expect, it } from "vitest"
 
 import type { Engine } from "../../src/client/engine.ts"
 import { bsonToEjson, ejsonToBson } from "../../src/core/wasm/client/canopy_client_js.js"
-
-const conformance = join(
-  process.env["CANOPY_REPO"] ?? fileURLToPath(new URL("../../../Canopy", import.meta.url)),
-  "conformance",
-  "matcher",
-)
+import { matcherFixture } from "../support/conformance.ts"
+import { freshGraph } from "../support/fresh.ts"
 
 interface Fixture<Case> {
   readonly documents: readonly string[]
   readonly cases: readonly Case[]
 }
 
-function fixture<Case>(name: string): Fixture<Case> {
-  return JSON.parse(readFileSync(join(conformance, `${name}.json`), "utf8")) as Fixture<Case>
+async function fixture<Case>(name: string): Promise<Fixture<Case>> {
+  return (await matcherFixture(name)) as Fixture<Case>
 }
 
 function bytesOf(base64: string): Uint8Array {
@@ -53,12 +45,13 @@ function isUnsupported(error: unknown): boolean {
 
 /** Loads the client core in one format, from a fresh copy of the engine module. */
 async function engineIn(kind: "wasm" | "js"): Promise<Engine> {
-  vi.resetModules()
+  const graph = freshGraph()
   const host = globalThis as { WebAssembly?: unknown }
   const saved = host.WebAssembly
   if (kind === "js") host.WebAssembly = undefined
   try {
-    const { loadEngine } = await import("../../src/client/engine.ts")
+    const { loadEngine } =
+      await graph.load<typeof import("../../src/client/engine.ts")>("client/engine.ts")
     const engine = await loadEngine()
     expect(engine.kind).toBe(kind)
     return engine
@@ -96,7 +89,7 @@ interface UpdateCase {
 describe.each(["wasm", "js"] as const)("matcher conformance through the %s client core", (kind) => {
   it("decides every filter as MongoDB did", async () => {
     const engine = await engineIn(kind)
-    const { documents, cases } = fixture<FilterCase>("filters")
+    const { documents, cases } = await fixture<FilterCase>("filters")
     const docs = documents.map(value)
     const held = docs.flatMap((doc, position) => (doc === undefined ? [] : [{ doc, position }]))
     let decided = 0
@@ -138,7 +131,7 @@ describe.each(["wasm", "js"] as const)("matcher conformance through the %s clien
 
   it("sorts every page in MongoDB's order", async () => {
     const engine = await engineIn(kind)
-    const { documents, cases } = fixture<SortCase>("sorts")
+    const { documents, cases } = await fixture<SortCase>("sorts")
     const docs = documents.map(value)
     const held = docs.flatMap((doc, position) => (doc === undefined ? [] : [{ doc, position }]))
     let sorted = 0
@@ -169,7 +162,7 @@ describe.each(["wasm", "js"] as const)("matcher conformance through the %s clien
 
   it("projects every document as MongoDB did", async () => {
     const engine = await engineIn(kind)
-    const { documents, cases } = fixture<ProjectionCase>("projections")
+    const { documents, cases } = await fixture<ProjectionCase>("projections")
     const docs = documents.map(value)
     let projected = 0
     let refused = 0
@@ -209,7 +202,7 @@ describe.each(["wasm", "js"] as const)("matcher conformance through the %s clien
 
   it("applies every update as MongoDB did", async () => {
     const engine = await engineIn(kind)
-    const { documents, cases } = fixture<UpdateCase>("updates")
+    const { documents, cases } = await fixture<UpdateCase>("updates")
     const docs = documents.map(value)
     const counts = { applied: 0, refused: 0, unsupported: [] as number[], skipped: 0 }
     for (const [index, item] of cases.entries()) {

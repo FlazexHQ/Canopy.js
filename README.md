@@ -130,6 +130,7 @@ bun install --frozen-lockfile
 bun run check          # lint, format check, core layout and artifact checks, typecheck and tests
 bun run build          # dist/ for every entry point
 bun run test           # Vitest: client, React, Vue, Svelte, Solid, TanStack DB and devtools
+bun run test:browser   # the client and binding suites in Chromium, Firefox and WebKit
 bun run format         # bun fmt
 ```
 
